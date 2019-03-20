@@ -1,0 +1,33 @@
+{
+  "groups":[
+      {"id":"1","type":"groups","href":"http://cevi.puzzle.ch/groups/1.json","group_type":"Dachverband","layer":true,"name":"CEVI Schweiz","short_name":"JY","email":"judge@example.net","address":"569 Anderson Trace","zip_code":82541,"town":"Leopoldtown","country":null,"founding_date":null,"created_at":"2014-05-15T16:21:58.000+02:00","updated_at":"2014-11-09T10:20:55.000+01:00","deleted_at":null,
+	"links":{"layer_group":"1","hierarchies":["1"],"children":["7","6","170","3","156","64","5","4","149","131","2"]}}
+    ],
+  "linked":{
+    "groups":[
+      {"id":"1","name":"CEVI Schweiz","group_type":"Dachverband"},
+      {"id":"7","name":"Cevi Alpin","group_type":"Mitgliederorganisation"},
+      {"id":"6","name":"Cevi Region Bern","group_type":"Mitgliederorganisation"},
+      {"id":"170","name":"Cevi Regionalverband ZH-SH-GL","group_type":"Mitgliederorganisation"},
+      {"id":"3","name":"Geschäftsstelle","group_type":"Geschäftsstelle"},
+      {"id":"156","name":"Nationalspender","group_type":"Spender"},
+      {"id":"64","name":"RV Winterthur-Schaffhausen","group_type":"Mitgliederorganisation"},
+      {"id":"5","name":"RV ZH-SH-GL","group_type":"Mitgliederorganisation"},
+      {"id":"4","name":"Revisionsstelle","group_type":"Gremium"},
+      {"id":"149","name":"Spender","group_type":"Spender"},
+      {"id":"131","name":"Spender","group_type":"Externe"},
+      {"id":"2","name":"Vorstand","group_type":"Vorstand"}
+    ]
+  },
+"links":
+  {
+  "groups.creator":{"href":"http://cevi.puzzle.ch/people/{groups.creator}.json","type":"people"},
+  "groups.updater":{"href":"http://cevi.puzzle.ch/people/{groups.updater}.json","type":"people"},
+  "groups.deleter":{"href":"http://cevi.puzzle.ch/people/{groups.deleter}.json","type":"people"},
+  "groups.parent":{"href":"http://cevi.puzzle.ch/groups/{groups.parent}.json","type":"groups"},
+  "groups.layer_group":{"href":"http://cevi.puzzle.ch/groups/{groups.layer_group}.json","type":"groups"},
+  "groups.hierarchy":{"href":"http://cevi.puzzle.ch/groups/{groups.hierarchy}.json","type":"groups"},
+  "groups.children":{"href":"http://cevi.puzzle.ch/groups/{groups.children}.json","type":"groups"},
+  "groups.people":{"href":"http://cevi.puzzle.ch/groups/{groups.id}/people.json","type":"people"}
+  }
+}
