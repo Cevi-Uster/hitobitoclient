@@ -91,7 +91,7 @@ Section "Installation of ${AppName}" SecAppFiles
 			; If you add more sections be sure to add them here as well
   SetOutPath $INSTDIR
 ;Copy the JRE
-File /r "bin/jre"
+File /r "tmp/build/jre"
 ;Copy the JAR
 File /r "target/${JarName}"
 File /r "src/main/resources/cevilogo.ico"
