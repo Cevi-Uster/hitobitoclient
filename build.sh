@@ -18,6 +18,7 @@ cd $BUILDPATH
 echo "Download JRE from AdoptOpenJDK for Windows"
 wget https://github.com/AdoptOpenJDK/openjdk11-binaries/releases/download/jdk-11.0.2%2B9/OpenJDK11U-jre_x64_windows_hotspot_11.0.2_9.zip
 unzip OpenJDK11U-jre_x64_windows_hotspot_11.0.2_9.zip
+mv jdk-11.0.2+9-jre jre
 
 git clone https://github.com/Cevi-Uster/hitobitoclient.git
 cd hitobitoclient/cevi-db-client
