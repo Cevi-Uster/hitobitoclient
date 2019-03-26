@@ -127,7 +127,7 @@
 					<mainClass>ch.cevi.db.client.DBClient</mainClass>
 					<bundleName>Cevi.DB Client</bundleName>
 					<iconFile>cevilogo.icns</iconFile>
-					<jrePath>/Library/Java/JavaVirtualMachines/openjdk-11.0.1.jdk</jrePath>
+					<jrePath>/tmp/build/jre_macos</jrePath>
 					<generateDiskImageFile>true</generateDiskImageFile>
 				</configuration>
 				<executions>

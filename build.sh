@@ -20,6 +20,10 @@ wget https://github.com/AdoptOpenJDK/openjdk11-binaries/releases/download/jdk-11
 unzip OpenJDK11U-jre_x64_windows_hotspot_11.0.2_9.zip
 mv jdk-11.0.2+9-jre jre
 
+echo "Download JRE from AdoptOpenJDK for MacOS"
+wget https://github.com/AdoptOpenJDK/openjdk11-binaries/releases/download/jdk-11.0.2%2B9/OpenJDK11U-jre_x64_mac_hotspot_11.0.2_9.tar.gz
+tar -xvf OpenJDK11U-jre_x64_mac_hotspot_11.0.2_9.tar.gz
+
 git clone https://github.com/Cevi-Uster/hitobitoclient.git
 cd hitobitoclient/cevi-db-client
 sed -i '' "s/@version@/${VERSION}/g" src/main/java/ch/cevi/db/client/configuration/Version.java
