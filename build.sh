@@ -27,12 +27,13 @@ mv jdk-11.0.2+9-jre jre_macos
 
 git clone https://github.com/Cevi-Uster/hitobitoclient.git
 cd hitobitoclient/cevi-db-client
+mvn release:prepare -Dmaven.test.skip=true
+
 sed -i '' "s/@version@/${VERSION}/g" src/main/java/ch/cevi/db/client/configuration/Version.java
 sed -i '' "s/@releasedate@/${BUILDDATE}/g" src/main/java/ch/cevi/db/client/configuration/Version.java
 sed -i '' "s/@version@/${VERSION}/g" Setup.nsi
 
 #mvn clean package appbundle:bundle  -Dmaven.test.skip=true
-mvn release:prepare -Dmaven.test.skip=true
 mvn release:clean -Dmaven.test.skip=true
 
 
