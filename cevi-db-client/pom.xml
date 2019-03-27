@@ -2,13 +2,13 @@
 
 	<scm>
 		<developerConnection>scm:git:https://github.com/Cevi-Uster/hitobitoclient/</developerConnection>
-	  <tag>cevi-db-client-1.1-Beta-02</tag>
+	  <tag>HEAD</tag>
   </scm>
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>ch.cevi.db.client</groupId>
 	<artifactId>cevi-db-client</artifactId>
 	<packaging>jar</packaging>
-	<version>1.1-Beta-02</version>
+	<version>1.1-Beta-03-SNAPSHOT</version>
 	<name>cevi-db-client</name>
 	<url>http://maven.apache.org</url>
 	<properties>
