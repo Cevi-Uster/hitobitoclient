@@ -3,7 +3,7 @@
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
 
 	<scm>
-		<developerConnection>scm:git:git://github.com/Cevi-Uster/hitobitoclient/tree/master/cevi-db-client</developerConnection>
+		<developerConnection>scm:git:https://github.com/Cevi-Uster/hitobitoclient/</developerConnection>
 	</scm>
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>ch.cevi.db.client</groupId>
