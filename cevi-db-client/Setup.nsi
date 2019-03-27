@@ -5,7 +5,7 @@
  
 !define AppName "Cevi.DB-Client"
 !define JarName "cevi-db-client-1.0-SNAPSHOT-jar-with-dependencies.jar"
-!define AppVersion "1.1-Beta-02"
+!define AppVersion "@version@"
 !define ShortName "Cevi.DB-Client"
 !define Vendor "Marc Baumgartner"
  
