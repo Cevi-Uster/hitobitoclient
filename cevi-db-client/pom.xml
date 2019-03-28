@@ -132,6 +132,7 @@
 					<bundleName>Cevi.DB Client</bundleName>
 					<iconFile>cevilogo.icns</iconFile>
 					<jrePath>/tmp/build/jre_macos</jrePath>
+					<finalName>cevi-db-client</finalName>
 					<generateDiskImageFile>true</generateDiskImageFile>
 				</configuration>
 				<executions>

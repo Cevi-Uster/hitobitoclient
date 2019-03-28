@@ -40,6 +40,6 @@ mvn clean package appbundle:bundle  -Dmaven.test.skip=true
 
 makensis Setup.nsi
 mkdir -p $PROJECTDIR/release
-mv target/cevi-db-client-1.0-SNAPSHOT.dmg $PROJECTDIR/release/cevi-db-client-${VERSION}.dmg
+mv target/cevi-db-client-1.2-SNAPSHOT.dmg $PROJECTDIR/release/cevi-db-client-${VERSION}.dmg
 mv target/*.exe $PROJECTDIR/release/
 
