@@ -8,7 +8,7 @@
 	<groupId>ch.cevi.db.client</groupId>
 	<artifactId>cevi-db-client</artifactId>
 	<packaging>jar</packaging>
-	<version>1.1-Beta-03-SNAPSHOT</version>
+	<version>1.2-SNAPSHOT</version>
 	<name>cevi-db-client</name>
 	<url>http://maven.apache.org</url>
 	<properties>
@@ -154,6 +154,7 @@
 				<artifactId>maven-assembly-plugin</artifactId>
 				<version>3.1.0</version>
 				<configuration>
+					<finalName>cevi-db-client-with-dependencies</finalName>
 					<descriptorRefs>
 						<descriptorRef>jar-with-dependencies</descriptorRef>
 					</descriptorRefs>
