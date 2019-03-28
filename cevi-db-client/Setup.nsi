@@ -4,7 +4,7 @@
 ; Credit given to so many people of the NSIS forum.
  
 !define AppName "Cevi.DB-Client"
-!define JarName "cevi-db-client-1.2-SNAPSHOT-jar-with-dependencies.jar"
+!define JarName "cevi-db-client-with-dependencies.jar"
 !define AppVersion "@version@"
 !define ShortName "Cevi.DB-Client"
 !define Vendor "Marc Baumgartner"
