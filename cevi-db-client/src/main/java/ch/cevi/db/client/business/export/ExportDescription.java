@@ -56,6 +56,8 @@ public class ExportDescription {
 	public static final String EXPORT_ATTRIBUTE_COUNTRY_PROPERTY = "exportAttributeCountry";
 	
 	public static final String EXPORT_ATTRIBUTE_EMAIL_PROPERTY = "exportAttributeEmail";
+	
+	public static final String EXPORT_PUBLIC_EMAIL_ONLY_PROPERTY = "exportPublicEMailOnly";
 
 	public static final String EXPORT_PUBLIC_PHONE_NUMBER_PROPERTY = "exportPublicPhoneNumber";
 	
@@ -139,6 +141,8 @@ public class ExportDescription {
 
 	private boolean exportAttributeEmail;
 	
+	private boolean exportPublicEMailOnly;
+	
 	private boolean exportPublicPhoneNumber;
 	
 	private boolean exportPublicMobileNumber;
@@ -215,6 +219,7 @@ public class ExportDescription {
 		this.exportAttributeBirthday = exportAll;
 		this.exportAttributePrimaryGroupId = exportAll;
 		this.exportAttributeAdditionalInformation = exportAll;
+		this.exportPublicEMailOnly = exportAll;
 		this.propertyChangeSupport = new PropertyChangeSupport(this);
 	}
 	
@@ -352,6 +357,15 @@ public class ExportDescription {
 
 	public void setExportAttributeEmail(boolean exportAttributeEmail) {
 		this.exportAttributeEmail = exportAttributeEmail;
+	}
+	
+
+	public boolean isExportPublicEMailOnly() {
+		return exportPublicEMailOnly;
+	}
+
+	public void setExportPublicEMailOnly(boolean exportPublicEMailOnly) {
+		this.exportPublicEMailOnly = exportPublicEMailOnly;
 	}
 
 	public boolean isExportAttributeAddress() {

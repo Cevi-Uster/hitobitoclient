@@ -8,6 +8,7 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import javax.swing.SwingWorker;
 
@@ -401,9 +402,13 @@ public abstract class GeneralExporter {
 		if (person.getEmail() != null && !person.getEmail().isEmpty()) {
 			return person.getEmail();
 		} else {
-			for (AdditionalMail mail : person.getAdditionalMails()) {
-				if (mail.isPublicVisible()) {
-					return mail.getEmail();
+			Optional<AdditionalMail> optionalAdditionalMail = person.getAdditionalMails().stream().filter(mail -> mail.isPublicVisible()).findFirst();
+			if (optionalAdditionalMail.isPresent()) {
+				return optionalAdditionalMail.get().getEmail();
+			} else if (!exportDescription.isExportPublicEMailOnly()) {
+				Optional<AdditionalMail> optionalAdditionalPrivateMail = person.getAdditionalMails().stream().findFirst();
+				if (optionalAdditionalPrivateMail.isPresent()) {
+					return optionalAdditionalPrivateMail.get().getEmail();
 				}
 			}
 		}

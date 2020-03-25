@@ -16,12 +16,12 @@ mkdir -p $BUILDPATH
 cd $BUILDPATH
 
 echo "Download JRE from AdoptOpenJDK for Windows"
-wget https://github.com/AdoptOpenJDK/openjdk11-binaries/releases/download/jdk-11.0.2%2B9/OpenJDK11U-jre_x64_windows_hotspot_11.0.2_9.zip
+wget https://github.com/AdoptOpenJDK/openjdk11-binaries/releases/download/jdk-11.0.6%2B10/OpenJDK11U-jdk_x64_windows_hotspot_11.0.6_10.zip
 unzip OpenJDK11U-jre_x64_windows_hotspot_11.0.2_9.zip
 mv jdk-11.0.2+9-jre jre
 
 echo "Download JRE from AdoptOpenJDK for MacOS"
-wget https://github.com/AdoptOpenJDK/openjdk11-binaries/releases/download/jdk-11.0.2%2B9/OpenJDK11U-jre_x64_mac_hotspot_11.0.2_9.tar.gz
+wget https://github.com/AdoptOpenJDK/openjdk11-binaries/releases/download/jdk-11.0.6%2B10/OpenJDK11U-jdk_x64_mac_hotspot_11.0.6_10.tar.gz
 tar -xvf OpenJDK11U-jre_x64_mac_hotspot_11.0.2_9.tar.gz
 mv jdk-11.0.2+9-jre jre_macos
 

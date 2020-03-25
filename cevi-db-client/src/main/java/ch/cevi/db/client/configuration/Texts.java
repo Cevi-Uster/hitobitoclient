@@ -192,6 +192,8 @@ public class Texts {
 	public static final String EXPORT_DIALOG_CANCEL_BUTTON_LABEL = "EXPORT_DIALOG_CANCEL_BUTTON_LABEL";
 	
 	public static final String EXPORT_DIALOG_ATTRIBUTE_TITLE = "EXPORT_DIALOG_ATTRIBUTE_TITLE";
+	
+	public static final String EXPORT_DIALOG_PUBLIC_EMAIL_ONLY = "EXPORT_DIALOG_PUBLIC_EMAIL_ONLY";
 
 	private static final ResourceBundle messages = ResourceBundle.getBundle("MessagesBundle", Locale.getDefault());
 	
