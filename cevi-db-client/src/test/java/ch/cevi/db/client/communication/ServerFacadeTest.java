@@ -19,7 +19,7 @@ public class ServerFacadeTest {
 	@Test
 	public void testGetMainGroup() throws Exception {
 		System.out.println("************** testGetMainGroup ****************");
-		Session session = new Session("https://cevi.puzzle.ch", false);
+		ISession session = new Session("https://cevi.puzzle.ch", false);
 		try {
 			session.login("simba.uster@cevi.ch", "cevi14cevi");
 			ServerFacade serverFacade = new ServerFacade(session);
@@ -40,7 +40,7 @@ public class ServerFacadeTest {
 	@Test
 	public void testGetChildGroups() throws Exception {
 		System.out.println("************** testGetChildGroups ****************");
-		Session session = new Session("https://cevi.puzzle.ch", false);
+		ISession session = new Session("https://cevi.puzzle.ch", false);
 		try {
 			session.login("simba.uster@cevi.ch", "cevi14cevi");
 			ServerFacade serverFacade = new ServerFacade(session);
@@ -66,7 +66,7 @@ public class ServerFacadeTest {
 	@Test
 	public void testGetPersons() throws Exception {
 		System.out.println("************** testGetPersons ****************");
-		Session session = new Session("https://cevi.puzzle.ch", false);
+		ISession session = new Session("https://cevi.puzzle.ch", false);
 		try {
 			session.login("simba.uster@cevi.ch", "cevi14cevi");
 			ServerFacade serverFacade = new ServerFacade(session);

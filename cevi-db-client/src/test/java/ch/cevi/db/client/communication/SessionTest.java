@@ -9,7 +9,7 @@ import org.junit.Test;
 
 public class SessionTest {
 
-	Session session;
+	ISession session;
 
 	@Before
 	public void buildSession() throws Exception {

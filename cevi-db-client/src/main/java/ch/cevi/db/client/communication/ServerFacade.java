@@ -22,7 +22,7 @@ import ch.cevi.db.client.configuration.Texts;
 
 /**
  * Facade for all business operations on the hitobito server.
- * {@link Session#login(String, String)} must be called before any business
+ * {@link ISession#login(String, String)} must be called before any business
  * operations may be called!
  * 
  * @author developer
@@ -32,13 +32,13 @@ public class ServerFacade {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(ServerFacade.class.getName());
 
-	private Session session;
+	private ISession session;
 
 	private Map<String, YGroup> groupCache = Collections.synchronizedMap(new HashMap<String, YGroup>());
 
 	private Map<String, Person> personCache = Collections.synchronizedMap(new HashMap<String, Person>());
 
-	public ServerFacade(Session session) {
+	public ServerFacade(ISession session) {
 		this.session = session;
 	}
 

@@ -6,8 +6,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import ch.cevi.db.client.business.entities.YGroup;
+import ch.cevi.db.client.communication.ISession;
 import ch.cevi.db.client.communication.ServerFacade;
-import ch.cevi.db.client.communication.Session;
+import ch.cevi.db.client.communication.SessionFactory;
 import ch.cevi.db.client.configuration.Configuration;
 import ch.cevi.db.client.configuration.Texts;
 
@@ -17,7 +18,7 @@ public class MainController {
 
 	private MainWindow mainWindow;
 
-	private Session session;
+	private ISession session;
 
 	private ServerFacade serverFacade;
 
@@ -29,7 +30,7 @@ public class MainController {
 	}
 
 	public void connect() {
-		session = new Session(configuration.getBaseUrl().toString(), configuration.getUsePrimaryGroupAsRoot());
+		session = SessionFactory.createSession(configuration);
 		SwingWorker<Object, Object> loginWorker = new SwingWorker<Object, Object>() {
 
 			boolean loginSuccessfull = false;

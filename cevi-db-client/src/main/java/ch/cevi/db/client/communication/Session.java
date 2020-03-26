@@ -22,7 +22,7 @@ import ch.cevi.db.client.configuration.Constants;
  * @author developer
  *
  */
-public class Session {
+public class Session implements ISession {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(Session.class.getName());
 
@@ -41,6 +41,7 @@ public class Session {
 		this.usePrimaryGroupAsRoot = usePrimaryGroupAsRoot;
 	}
 
+	@Override
 	public synchronized void login(String email, String password) throws Exception {
 		client = Client.create();
 		client.setConnectTimeout(Constants.CONNECTION_TIME_OUT);
@@ -72,6 +73,7 @@ public class Session {
 		}
 	}
 
+	@Override
 	public synchronized String callServerMethod(String url) throws Exception {
 		String result = null;
 		if (client != null && loggedInUser != null) {
@@ -96,6 +98,7 @@ public class Session {
 		return result;
 	}
 
+	@Override
 	public synchronized void logout() throws Exception {
 		try {
 			if (client != null && loggedInUser != null) {
@@ -123,18 +126,22 @@ public class Session {
 		}
 	}
 
+	@Override
 	public Person getLoggedInUser() {
 		return loggedInUser;
 	}
 
+	@Override
 	public String getBaseUrl() {
 		return baseUrl;
 	}
 
+	@Override
 	public boolean isLoggedIn() {
 		return loggedInUser != null;
 	}
 
+	@Override
 	public String getMainGroupId() {
 		if (usePrimaryGroupAsRoot && loggedInUser.getPrimaryGroupId() != null) {
 			return loggedInUser.getPrimaryGroupId();
