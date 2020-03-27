@@ -53,7 +53,7 @@ public class Session2 implements ISession {
 	            .connectTimeout(Duration.ofSeconds(Constants.CONNECTION_TIME_OUT))
 	            .cookieHandler(CookieHandler.getDefault())
 	            .followRedirects(Redirect.ALWAYS)
-	            .executor(Executors.newFixedThreadPool(8))
+	            .executor(Executors.newFixedThreadPool(16))
 	            .build();
 	}
 

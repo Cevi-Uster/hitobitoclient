@@ -226,7 +226,7 @@ public class ServerFacade {
 
 	public List<Person> loadPersonList(final String groupId) throws Exception {
 		LOGGER.info("loadPersonList for groupId" + groupId);
-		final List<Person> personList = Collections.synchronizedList(new ArrayList<Person>());
+		final List<Person> personResultList = Collections.synchronizedList(new ArrayList<Person>());
 		final List<Exception> exceptionList = Collections.synchronizedList(new ArrayList<Exception>());
 		final Person loggedInUser = session.getLoggedInUser();
 		// /groups/1/people/1
@@ -238,34 +238,28 @@ public class ServerFacade {
 		final JSONArray personListArray = personListResultSetObject.optJSONArray("people");
 		if (personListArray.length() > 0) {
 			if (personListArray != null) {
-				ExecutorService detailLoaderService = Executors.newFixedThreadPool(20);
+				List<JSONObject> personList = new ArrayList<>(personListArray.length());
 				for (int personIndex = 0; personIndex < personListArray.length(); personIndex++) {
-					final int currentPersonIndex = personIndex;
-					Runnable detailLoader = new Runnable() {
-						@Override
-						public void run() {
-							try {
-								loadPersonDetails(groupId, personList, loggedInUser, personListArray, currentPersonIndex);
-							} catch (Exception e) {
-								LOGGER.error(e.getMessage());
-								exceptionList.add(e);
-							}
-						}
-					};
-					detailLoaderService.execute(detailLoader);
+					JSONObject personObject = personListArray.optJSONObject(personIndex);
+					personList.add(personObject);
 				}
-				detailLoaderService.shutdown();
-				detailLoaderService.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
+				personList.parallelStream().forEach(personObject -> {
+					try {
+						loadPersonDetails(groupId, personResultList, loggedInUser, (JSONObject) personObject);
+					} catch (Exception e) {
+						LOGGER.error(e.getMessage());
+						exceptionList.add(e);
+					}
+				});
 				if (!exceptionList.isEmpty()) {
 					throw new Exception("Error while loading person details", exceptionList.get(0));
 				}
 			}
 		}
-		return personList;
+		return personResultList;
 	}
 
-	private void loadPersonDetails(String groupId, List<Person> personList, Person loggedInUser, JSONArray personListArray, int personIndex) throws Exception {
-		JSONObject personObject = personListArray.optJSONObject(personIndex);
+	private void loadPersonDetails(String groupId, List<Person> personList, Person loggedInUser, JSONObject personObject) throws Exception {
 		if (personObject != null) {
 			Person person = new Person();
 			person.initFromJSONObject(personObject);
