@@ -23,11 +23,14 @@ public class LogPane extends JPanel {
 	}
 
 	private void initGui() {
-		this.setLayout(new FormLayout("fill:pref:grow", "fill:150px:grow"));
+		this.setLayout(new FormLayout("fill:0px:grow", "fill:150px:grow"));
 		CellConstraints cc = new CellConstraints();
 		this.textArea = new JTextArea();
+		this.textArea.setLineWrap(true);
+		this.textArea.setWrapStyleWord(true);
 		JScrollPane scrollPane = new JScrollPane(textArea);
 		scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
+		scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
 		this.add(scrollPane, cc.xy(1, 1));
 	}
 

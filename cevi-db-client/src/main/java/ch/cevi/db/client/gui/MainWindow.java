@@ -9,12 +9,16 @@ import java.util.Locale;
 import java.util.prefs.Preferences;
 
 import javax.swing.JFrame;
+import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
 import javax.swing.SwingUtilities;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.jgoodies.forms.layout.CellConstraints;
+import com.jgoodies.forms.layout.FormLayout;
 
 import ch.cevi.db.client.business.entities.YGroup;
 import ch.cevi.db.client.configuration.Configuration;
@@ -29,6 +33,7 @@ import ch.cevi.db.client.gui.grouptree.GroupTreeSelectionListener;
 import ch.cevi.db.client.gui.grouptree.LazyTreeNode;
 import ch.cevi.db.client.gui.logpane.LogPane;
 import ch.cevi.db.client.gui.mainmenu.MainMenuBar;
+import ch.cevi.db.client.gui.statusbar.StatusBar;
 
 public class MainWindow extends JFrame {
 
@@ -57,6 +62,8 @@ public class MainWindow extends JFrame {
 	private JSplitPane mainSplitPane;
 	
 	private LogPane logPane;
+	
+	private StatusBar statusBar;
 
 	private JScrollPane treeScrollPane;
 
@@ -84,7 +91,7 @@ public class MainWindow extends JFrame {
 		registerWindowListeners();
 		initMainMenu();
 		initMainView();
-		initLogPane();
+		initLogAndStatusPane();
 	}
 
 	public void start() {
@@ -127,9 +134,15 @@ public class MainWindow extends JFrame {
 		this.getContentPane().add(mainSplitPane, BorderLayout.CENTER);
 	}
 
-	private void initLogPane() {
+	private void initLogAndStatusPane() {
 		logPane = new LogPane();
-		this.add(logPane, BorderLayout.SOUTH);
+		statusBar = new StatusBar();
+		FormLayout layout = new FormLayout("fill:0px:grow", "fill:pref:grow, top:pref:none");
+		JPanel southPanel = new JPanel(layout);
+		CellConstraints cc = new CellConstraints();
+		southPanel.add(logPane, cc.xy(1, 1));
+		southPanel.add(statusBar, cc.xy(1, 2));
+		this.add(southPanel, BorderLayout.SOUTH);
 	}
 	
 	private void restoreSizePositionAndExtendedState() {
