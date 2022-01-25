@@ -143,6 +143,8 @@ public class Texts {
 
 	public static final String EXPORT_HEADER_EMAIL = "EXPORT_HEADER_EMAIL";
 	
+	public static final String EXPORT_HEADER_EMAIL_PRIVATE = "EXPORT_HEADER_EMAIL_PRIVATE";
+	
 	public static final String EXPORT_HEADER_PHONE = "EXPORT_HEADER_PHONE";
 	
 	public static final String EXPORT_HEADER_MOBILE_NUMBER = "EXPORT_HEADER_MOBILE_NUMBER";

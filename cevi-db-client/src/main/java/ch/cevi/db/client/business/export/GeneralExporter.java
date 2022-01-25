@@ -9,6 +9,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 import javax.swing.SwingWorker;
 
@@ -151,6 +152,9 @@ public abstract class GeneralExporter {
 		if (exportDescription.isExportAttributeEmail()) {
 			headerData.add(Texts.getTranslatedText(Texts.EXPORT_HEADER_EMAIL));
 		}
+		if (exportDescription.isExportAttributeEmail()) {
+			headerData.add(Texts.getTranslatedText(Texts.EXPORT_HEADER_EMAIL_PRIVATE));
+		}
 		if (exportDescription.isExportAttributeSalutationParents()){
 			headerData.add(Texts.getTranslatedText(Texts.EXPORT_HEADER_SALUTATION_PARENTS));
 		}
@@ -292,6 +296,9 @@ public abstract class GeneralExporter {
 						if (exportDescription.isExportAttributeEmail()) {
 							memberData.add(getMailAddress(member));
 						}
+						if (exportDescription.isExportAttributeEmail()) {
+							memberData.add(getPrivateMailAddress(member));
+						}
 						if (exportDescription.isExportAttributeSalutationParents()){
 							memberData.add(member.getSalutationParents());
 						}
@@ -412,6 +419,20 @@ public abstract class GeneralExporter {
 				}
 			}
 		}
+		return null;
+	}
+	
+	private String getPrivateMailAddress(Person person) {
+		Stream<AdditionalMail> privateMailStream = person.getAdditionalMails().stream().filter(mail -> mail.getLabel() != null).filter(mail -> mail.getLabel().trim().toLowerCase().contains("privat"));
+		if (exportDescription.isExportPublicEMailOnly()) {
+			Optional<AdditionalMail> optionalAdditionalMail = privateMailStream.filter(mail -> mail.isPublicVisible()).findFirst();
+			if (optionalAdditionalMail.isPresent()) {
+				return optionalAdditionalMail.get().getEmail();
+			}
+		} else if (privateMailStream.findFirst().isPresent()) {
+			return privateMailStream.findFirst().get().getEmail();
+		}
+
 		return null;
 	}
 }
