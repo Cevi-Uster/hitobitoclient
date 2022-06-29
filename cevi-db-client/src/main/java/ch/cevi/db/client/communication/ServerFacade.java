@@ -185,20 +185,29 @@ public class ServerFacade {
 
 				List<Role> groupRoles = new ArrayList<Role>();
 
-				// loading the groupMembers is probably not allowed...
-				try {
-					List<Person> groupMembers = loadPersonList(groupId);
-					for (Person p : groupMembers) {
-						for (Role role : p.getRoles()) {
-							if (group.getId().equals(role.getGroupId())) {
-								role.setyGroup(group);
-								groupRoles.add(role);
+				int loadPersonListRetryCount = 0;
+				while (loadPersonListRetryCount < 3) {
+					// loading the groupMembers is probably not allowed...
+					try {
+						List<Person> groupMembers = loadPersonList(groupId);
+						for (Person p : groupMembers) {
+							for (Role role : p.getRoles()) {
+								if (group.getId().equals(role.getGroupId())) {
+									role.setyGroup(group);
+									groupRoles.add(role);
+								}
 							}
 						}
-					}
-				} catch (Exception e) {
-					LOGGER.info("Loading groupMembers failed. Detail message: " + e.getMessage());
+						break;
+					} catch (Exception e) {
+						LOGGER.info("Loading groupMembers failed on retry number: " + loadPersonListRetryCount +" Detail message: " + e.getMessage());
+						loadPersonListRetryCount ++;
+						if (loadPersonListRetryCount >=3) {
+							LOGGER.info("Retry count exeeded. Give up loading group member for group: " + groupId);
+						}
+					}	
 				}
+				
 
 				group.setGroupRoles(groupRoles);
 				group.setFullyLoaded(true);
@@ -232,30 +241,36 @@ public class ServerFacade {
 		// /groups/1/people/1
 		final String personListUrl = String.format("%s/groups/%s/people.json?user_email=%s&user_token=%s", session.getBaseUrl(), groupId, loggedInUser.getEmail(),
 				loggedInUser.getAuthenticationToken());
-		final String personListString = session.callServerMethod(personListUrl);
-
-		JSONObject personListResultSetObject = new JSONObject(personListString);
-		final JSONArray personListArray = personListResultSetObject.optJSONArray("people");
-		if (personListArray.length() > 0) {
-			if (personListArray != null) {
-				List<JSONObject> personList = new ArrayList<>(personListArray.length());
-				for (int personIndex = 0; personIndex < personListArray.length(); personIndex++) {
-					JSONObject personObject = personListArray.optJSONObject(personIndex);
-					personList.add(personObject);
-				}
-				personList.parallelStream().forEach(personObject -> {
-					try {
-						loadPersonDetails(groupId, personResultList, loggedInUser, (JSONObject) personObject);
-					} catch (Exception e) {
-						LOGGER.error(e.getMessage());
-						exceptionList.add(e);
+		try {
+			final String personListString = session.callServerMethod(personListUrl);
+			JSONObject personListResultSetObject = new JSONObject(personListString);
+			final JSONArray personListArray = personListResultSetObject.optJSONArray("people");
+			if (personListArray.length() > 0) {
+				if (personListArray != null) {
+					List<JSONObject> personList = new ArrayList<>(personListArray.length());
+					for (int personIndex = 0; personIndex < personListArray.length(); personIndex++) {
+						JSONObject personObject = personListArray.optJSONObject(personIndex);
+						personList.add(personObject);
 					}
-				});
-				if (!exceptionList.isEmpty()) {
-					throw new Exception("Error while loading person details", exceptionList.get(0));
+					personList.parallelStream().forEach(personObject -> {
+						try {
+							loadPersonDetails(groupId, personResultList, loggedInUser, (JSONObject) personObject);
+						} catch (Exception e) {
+							LOGGER.error(e.getMessage());
+							exceptionList.add(e);
+						}
+					});
+					if (!exceptionList.isEmpty()) {
+						
+						throw new Exception("Error while loading person details", exceptionList.get(0));
+					}
 				}
 			}
+		} catch (Exception e) {
+			LOGGER.error("Could not load person list from URL: " + personListUrl);
+			throw e;
 		}
+	
 		return personResultList;
 	}
 

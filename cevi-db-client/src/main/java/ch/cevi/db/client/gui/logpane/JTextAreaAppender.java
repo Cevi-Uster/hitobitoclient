@@ -2,6 +2,7 @@ package ch.cevi.db.client.gui.logpane;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 
 import javax.swing.JTextArea;
 
@@ -29,7 +30,6 @@ public class JTextAreaAppender extends AppenderBase<ILoggingEvent> {
 	private static Logger logger = LoggerFactory.getLogger(JTextAreaAppender.class);
 
 	private PatternLayoutEncoder encoder;
-	private ByteArrayOutputStream out = new ByteArrayOutputStream();
 	private JTextArea textArea;
 
 	public JTextAreaAppender(JTextArea textArea) {
@@ -50,16 +50,10 @@ public class JTextAreaAppender extends AppenderBase<ILoggingEvent> {
 
 	@Override
 	public void start() {
-		try {
-			encoder.init(out);
-			encoder.start();
-		} catch (IOException e) {
-		}
+		encoder.start();
 		super.start();
 	}
 
-	
-	
 	@Override
 	public void stop() {
 		encoder.stop();
@@ -68,15 +62,10 @@ public class JTextAreaAppender extends AppenderBase<ILoggingEvent> {
 
 	@Override
 	public void append(ILoggingEvent event) {
-		try {
-			encoder.doEncode(event);
-			out.flush();
-			String line = out.toString();
-			textArea.append(line);
-			textArea.setCaretPosition(textArea.getText().length() - 1);
-			out.reset();
-		} catch (IOException e) {
-		}
+		byte[] data = encoder.encode(event);
+		String line = new String(data, StandardCharsets.UTF_8);
+		textArea.append(line);
+		textArea.setCaretPosition(textArea.getText().length() - 1);
 	}
 
 }
