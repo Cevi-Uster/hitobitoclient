@@ -17,6 +17,15 @@ import com.sun.jersey.api.client.WebResource;
  * target site that requires user authentication.
  */
 public class ClientAuthenticationTest {
+	
+private static final String DB_USER;
+	
+	private static final String DB_PASSWORD;
+	
+	static {
+		DB_USER = System.getenv("CEVI_DB_USER");
+		DB_PASSWORD = System.getenv("CEVI_DB_PASSWORD");
+	}
 
 	@Test
 	public void signInTest() {
@@ -24,7 +33,7 @@ public class ClientAuthenticationTest {
 
 			Client client = Client.create();
 
-			WebResource webResource = client.resource("https://cevi.puzzle.ch/users/sign_in.json?person[email]=simba.uster@cevi.ch&person[password]=cevi14cevi");
+			WebResource webResource = client.resource("https://cevi.puzzle.ch/users/sign_in.json?person[email]="+DB_USER+"&person[password]="+DB_PASSWORD);
 			ClientResponse response = webResource.accept("application/json").post(ClientResponse.class);
 
 			if (response.getStatus() != 200) {
