@@ -43,17 +43,10 @@ public class ServerFacade {
 	}
 
 	/**
-	 * Load the group with Id groupId
-	 * 
-	 * @param groupId
-	 *            Id of the group to load
-	 * @return the loaded {@link YGroup}
-	 * @throws Exception
+	 * Load the group with Id groupId using the new API.
 	 */
 	public YGroup loadGroup(String groupId) throws Exception {
 		LOGGER.info("loadGroup for groupId" + groupId);
-
-		// Try to get group from cache
 		YGroup group = groupCache.get(groupId);
 		if (group != null) {
 			return group;
@@ -61,19 +54,17 @@ public class ServerFacade {
 			synchronized (this.groupCache) {
 				if (this.groupCache.get(groupId) == null) {
 					group = new YGroup();
-					String groupDetailsString = null;
-					Person loggedInUser = session.getLoggedInUser();
-					String url = String.format("%s/groups/%s.json?user_email=%s&user_token=%s", session.getBaseUrl(), groupId, loggedInUser.getEmail(), loggedInUser.getAuthenticationToken());
-					groupDetailsString = session.callServerMethod(url);
-					JSONObject groupeResultObject = new JSONObject(groupDetailsString);
-					JSONArray groupsArray = groupeResultObject.optJSONArray("groups");
-					JSONObject groupObject = groupsArray.optJSONObject(0);
-					group.initBasicDataFromJSONObject(groupObject);
-					group.initDetailDataFromJSONObject(groupObject);
-					if (groupsArray != null && groupsArray.length() > 0) {
-						JSONObject linkedObjects = groupeResultObject.getJSONObject("linked");
-						if (linkedObjects != null) {
-							group.setLayerGroupId(linkedObjects.optString("layer_group"));
+					String url = String.format("%s/api/groups/%s", session.getBaseUrl(), groupId);
+					String groupDetailsString = session.callServerMethod(url);
+					JSONObject groupResultObject = new JSONObject(groupDetailsString);
+					JSONObject groupObject = groupResultObject.optJSONObject("data");
+					if (groupObject != null) {
+						group.initBasicDataFromJSONObject(groupObject);
+						group.initDetailDataFromJSONObject(groupObject);
+						// Layer group and other relationships can be parsed from 'relationships' field if present
+						JSONObject relationships = groupObject.optJSONObject("relationships");
+						if (relationships != null && relationships.has("layer_group")) {
+							group.setLayerGroupId(relationships.optJSONObject("layer_group").optString("id"));
 						}
 					}
 					this.groupCache.put(groupId, group);
@@ -225,86 +216,43 @@ public class ServerFacade {
 	}
 
 	/**
-	 * Load all persons of the group with the supplied groupId
-	 * 
-	 * @param groupId
-	 *            Id of the group of which the persons should be loaded
-	 * @return List of loaded {@link Person}
-	 * @throws Exception
+	 * Load all persons of the group with the supplied groupId using the new API.
 	 */
-
 	public List<Person> loadPersonList(final String groupId) throws Exception {
 		LOGGER.info("loadPersonList for groupId" + groupId);
 		final List<Person> personResultList = Collections.synchronizedList(new ArrayList<Person>());
-		final List<Exception> exceptionList = Collections.synchronizedList(new ArrayList<Exception>());
-		final Person loggedInUser = session.getLoggedInUser();
-		// /groups/1/people/1
-		final String personListUrl = String.format("%s/groups/%s/people.json?user_email=%s&user_token=%s", session.getBaseUrl(), groupId, loggedInUser.getEmail(),
-				loggedInUser.getAuthenticationToken());
+		final String personListUrl = String.format("%s/api/groups/%s/people", session.getBaseUrl(), groupId);
 		try {
 			final String personListString = session.callServerMethod(personListUrl);
 			JSONObject personListResultSetObject = new JSONObject(personListString);
-			final JSONArray personListArray = personListResultSetObject.optJSONArray("people");
-			if (personListArray.length() > 0) {
-				if (personListArray != null) {
-					List<JSONObject> personList = new ArrayList<>(personListArray.length());
-					for (int personIndex = 0; personIndex < personListArray.length(); personIndex++) {
-						JSONObject personObject = personListArray.optJSONObject(personIndex);
-						personList.add(personObject);
-					}
-					personList.parallelStream().forEach(personObject -> {
-						try {
-							loadPersonDetails(groupId, personResultList, loggedInUser, (JSONObject) personObject);
-						} catch (Exception e) {
-							LOGGER.error(e.getMessage());
-							exceptionList.add(e);
-						}
-					});
-					if (!exceptionList.isEmpty()) {
-						
-						throw new Exception("Error while loading person details", exceptionList.get(0));
-					}
+			JSONArray personListArray = personListResultSetObject.optJSONArray("data");
+			if (personListArray != null && personListArray.length() > 0) {
+				for (int personIndex = 0; personIndex < personListArray.length(); personIndex++) {
+					JSONObject personObject = personListArray.optJSONObject(personIndex);
+					loadPersonDetails(groupId, personResultList, personObject);
 				}
 			}
 		} catch (Exception e) {
 			LOGGER.error("Could not load person list from URL: " + personListUrl);
 			throw e;
 		}
-	
 		return personResultList;
 	}
 
-	private void loadPersonDetails(String groupId, List<Person> personList, Person loggedInUser, JSONObject personObject) throws Exception {
+	private void loadPersonDetails(String groupId, List<Person> personList, JSONObject personObject) throws Exception {
 		if (personObject != null) {
 			Person person = new Person();
 			person.initFromJSONObject(personObject);
-
 			Person personFromCache = personCache.get(person.getId());
 			if (personFromCache != null) {
 				person = personFromCache;
 			} else {
-				String personUrl = String.format("%s/groups/%s/people/%s.json?user_email=%s&user_token=%s", session.getBaseUrl(), groupId, person.getId(), loggedInUser.getEmail(),
-						loggedInUser.getAuthenticationToken());
+				String personUrl = String.format("%s/api/groups/%s/people/%s", session.getBaseUrl(), groupId, person.getId());
 				String personString = session.callServerMethod(personUrl);
 				JSONObject personResultSetObject = new JSONObject(personString);
-				JSONArray personArray = personResultSetObject.optJSONArray("people");
-				JSONObject detailedPersonObject = personArray.optJSONObject(0);
+				JSONObject detailedPersonObject = personResultSetObject.optJSONObject("data");
 				person.initFromJSONObject(detailedPersonObject);
-
-				JSONObject linkedObject = personResultSetObject.optJSONObject("linked");
-				JSONArray phoneNumbersArray = linkedObject.optJSONArray("phone_numbers");
-				JSONArray rolesArray = linkedObject.optJSONArray("roles");
-				JSONArray additionalMailsArray = linkedObject.optJSONArray("additional_emails");
-				JSONArray socialAccountsArray = linkedObject.optJSONArray("social_accounts");
-
-				JSONObject linksObject = detailedPersonObject.optJSONObject("links");
-				if (linksObject != null) {
-					person.addPhoneNumbers(linksObject, phoneNumbersArray);
-					person.addRoles(linksObject, rolesArray);
-					person.addAdditionalMails(linksObject, additionalMailsArray);
-					person.addSocialAccounts(linksObject, socialAccountsArray);
-				}
-				// person.setLocalDepartments(findLocalDepartmentsForPerson(person));
+				// Relationships and included data can be parsed from 'relationships' or 'included' fields if present
 				personCache.put(person.getId(), person);
 			}
 			personList.add(person);

@@ -49,6 +49,8 @@ public class ConnectDialog extends AbstractDialog {
 
 	private JButton cancelButton;
 
+	private JTextField secondFactorField;
+
 	public ConnectDialog(MainWindow mainWindow, Configuration configuration) {
 		this(mainWindow, configuration, null);
 	}
@@ -66,46 +68,60 @@ public class ConnectDialog extends AbstractDialog {
 	@SuppressWarnings("unchecked")
 	private void initGui() {
 		CellConstraints cc = new CellConstraints();
-		this.setLayout(new FormLayout("5px, left:pref:none, 5px, fill:280px:grow, 5px",
-				"5px, top:pref:none, 5px, top:pref:none, 5px, top:pref:none, 5px, top:pref:none, 5px, top:pref:none, 5px, top:pref:none, 5px"));
-
+		this.setLayout(new FormLayout(
+			"5px, left:pref:none, 5px, fill:280px:grow, 5px",
+			"5px, top:pref:none, 5px, top:pref:none, 5px, top:pref:none, 5px, top:pref:none, 5px, top:pref:none, 5px, top:pref:none, 5px, top:pref:none, 5px"
+		));
+		int row = 2;
 		if (errorMessage != null) {
 			StyledLabel errorMessageLabel = new StyledLabel(errorMessage, StyledLabel.CENTER);
 			errorMessageLabel.addStyleRange(new StyleRange(Color.RED));
-			this.add(errorMessageLabel, cc.xyw(2, 2, 3));
+			this.add(errorMessageLabel, cc.xyw(2, row, 3));
+			row += 2;
 		}
-
 		ValueModel baseUrlValueModel = new PropertyAdapter<Configuration>(configuration, Configuration.BASE_URL_PROPERTY, true);
 		baseUrlComboBox = new JComboBox<BaseUrl>();
 		baseUrlComboBox.setModel(new ComboBoxAdapter<BaseUrl>(Configuration.BaseUrl.values(), baseUrlValueModel));
 		baseUrlComboBox.setSelectedItem(BaseUrl.Live);
-
-		this.add(new JLabel(Texts.getTranslatedText(Texts.CONNECT_DIALOG_BASE_URL_LABEL)), cc.xy(2, 4));
-		this.add(baseUrlComboBox, cc.xy(4, 4));
-
+		this.add(new JLabel(Texts.getTranslatedText(Texts.CONNECT_DIALOG_BASE_URL_LABEL)), cc.xy(2, row));
+		this.add(baseUrlComboBox, cc.xy(4, row));
+		row += 2;
 		ValueModel usernameValueModel = new PropertyAdapter<Configuration>(configuration, Configuration.USERNAME_PROPERTY, true);
 		usernameTextField = BasicComponentFactory.createTextField(usernameValueModel);
-		this.add(new JLabel(Texts.getTranslatedText(Texts.CONNECT_DIALOG_USERNAME_LABEL)), cc.xy(2, 6));
-		this.add(usernameTextField, cc.xy(4, 6));
-
+		this.add(new JLabel(Texts.getTranslatedText(Texts.CONNECT_DIALOG_USERNAME_LABEL)), cc.xy(2, row));
+		this.add(usernameTextField, cc.xy(4, row));
+		row += 2;
 		ValueModel passwordValueModel = new PropertyAdapter<Configuration>(configuration, Configuration.PASSWORD_PROPERTY, true);
 		passwordField = BasicComponentFactory.createPasswordField(passwordValueModel);
-		this.add(new JLabel(Texts.getTranslatedText(Texts.CONNECT_DIALOG_PASSWORD_LABEL)), cc.xy(2, 8));
-		this.add(passwordField, cc.xy(4, 8));
-
+		this.add(new JLabel(Texts.getTranslatedText(Texts.CONNECT_DIALOG_PASSWORD_LABEL)), cc.xy(2, row));
+		this.add(passwordField, cc.xy(4, row));
+		row += 2;
+		// Add second factor field (optional)
+		this.add(new JLabel(Texts.getTranslatedText(Texts.CONNECT_DIALOG_SECOND_FACTOR_LABEL)), cc.xy(2, row));
+		ValueModel secondFactorValueModel = new PropertyAdapter<Configuration>(configuration, Configuration.SECOND_FACTOR_CODE_PROPERTY, true);
+		secondFactorField = BasicComponentFactory.createTextField(secondFactorValueModel);
+		this.add(secondFactorField, cc.xy(4, row));
+		row += 2;
 		ValueModel usePrimaryGroupAsRootValueModel = new PropertyAdapter<Configuration>(configuration, Configuration.USE_PRIMARY_GROUP_AS_ROOT_PROPERY, true);
 		usePrimaryGroupAsRootCheckBox = BasicComponentFactory.createCheckBox(usePrimaryGroupAsRootValueModel, Texts.getTranslatedText(Texts.CONNECT_DIALOG_USE_PRIMARY_GROUP_AS_ROUTE));
-		this.add(usePrimaryGroupAsRootCheckBox, cc.xy(4, 10));
-
+		this.add(usePrimaryGroupAsRootCheckBox, cc.xy(4, row));
+		row += 2;
 		JPanel buttonPanel = new JPanel();
 		buttonPanel.setLayout(new FlowLayout(FlowLayout.CENTER));
 		okButton = new JButton(new OkAction());
 		cancelButton = new JButton(new CancelAction());
 		buttonPanel.add(okButton);
 		buttonPanel.add(cancelButton);
-		this.add(buttonPanel, cc.xyw(2, 12, 3));
+		this.add(buttonPanel, cc.xyw(2, row, 3));
 		this.getRootPane().setDefaultButton(okButton);
 		this.pack();
+	}
+
+	/**
+	 * Returns the value of the second factor field (may be empty).
+	 */
+	public String getSecondFactor() {
+		return secondFactorField != null ? secondFactorField.getText() : "";
 	}
 
 	class OkAction extends AbstractAction {
@@ -118,6 +134,7 @@ public class ConnectDialog extends AbstractDialog {
 
 		@Override
 		public void actionPerformed(ActionEvent e) {
+			configuration.setSecondFactorCode(getSecondFactor());
 			mainWindow.getMainController().connect();
 			ConnectDialog.this.dispatchEvent(new WindowEvent(ConnectDialog.this, WindowEvent.WINDOW_CLOSING));
 		}

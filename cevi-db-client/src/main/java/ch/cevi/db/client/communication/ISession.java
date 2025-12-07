@@ -4,7 +4,7 @@ import ch.cevi.db.client.business.entities.Person;
 
 public interface ISession {
 
-	void login(String email, String password) throws Exception;
+	void login(String email, String password, String secondFactorCode) throws Exception;
 
 	String callServerMethod(String url) throws Exception;
 
