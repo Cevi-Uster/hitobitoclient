@@ -11,14 +11,13 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.concurrent.Executors;
 
-import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
-import org.jsoup.nodes.Element;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.sun.jersey.api.client.Client;
 
+import ch.cevi.db.client.api.invoker.ApiClient;
+import ch.cevi.db.client.api.PeopleApi;
 import ch.cevi.db.client.business.entities.Person;
 import ch.cevi.db.client.configuration.Constants;
 
@@ -38,11 +37,11 @@ public class Session implements ISession {
 
 	private String baseUrl;
 	
-	private String authenticityToken;
-
 	private boolean usePrimaryGroupAsRoot;
 
 	private final HttpClient httpClient;
+
+	private ApiClient apiClient;
 
 	static {
 		CookieHandler.setDefault(new CookieManager());
@@ -57,6 +56,10 @@ public class Session implements ISession {
 				.executor(Executors.newFixedThreadPool(16)).build();
 	}
 
+	public ApiClient getApiClient() {
+		return apiClient;
+	}
+
 	/**
 	 * Login to the new Cevi.DB API using two-step authentication if required.
 	 * @param email User email
@@ -64,7 +67,7 @@ public class Session implements ISession {
 	 * @param secondFactorCode Optional second factor code (TOTP)
 	 */
 	@Override
-	public synchronized void login(final String email, final String password, final String secondFactorCode) throws Exception {
+	public synchronized ServerFacade login(final String email, final String password, final String secondFactorCode) throws Exception {
         // Step 0: GET /users/sign_in to fetch CSRF token
         String signInUrl = baseUrl + "/users/sign_in";
         HttpRequest signInGetRequest = HttpRequest.newBuilder()
@@ -123,56 +126,26 @@ public class Session implements ISession {
         } else if (loginResponse.statusCode() != 200) {
             throw new Exception("Login failed: " + loginResponse.body());
         }
-        // After successful login, fetch user info by email and set loggedInUser
-        String peopleUrl = String.format("%s/api/people?filter[email_eq]=%s", baseUrl, email);
-        HttpRequest peopleRequest = HttpRequest.newBuilder()
-            .uri(URI.create(peopleUrl))
-            .header("User-Agent", "Java 11 HttpClient Bot")
-            .GET()
-            .build();
-        HttpResponse<String> peopleResponse = httpClient.send(peopleRequest, HttpResponse.BodyHandlers.ofString());
-        if (peopleResponse.statusCode() == 200) {
-            org.json.JSONObject peopleObject = new org.json.JSONObject(peopleResponse.body());
-            org.json.JSONArray dataArray = peopleObject.optJSONArray("data");
-            if (dataArray != null && dataArray.length() > 0) {
-                org.json.JSONObject userData = dataArray.getJSONObject(0);
-                Person person = new Person();
-                person.initFromJSONObject(userData);
-                loggedInUser = person;
-                loggedInUser.setPassword(password); // Optionally store password
-            } else {
-                throw new Exception("Could not find user info after login.");
-            }
+        // After successful login, fetch user info by email and set loggedInUser using ServerFacade
+        apiClient = new ApiClient();
+        apiClient.setBasePath(baseUrl + "/api");
+        ServerFacade serverFacade = new ServerFacade(this);
+        Person person = serverFacade.loadPersonByEmail(email);
+        if (person != null) {
+            loggedInUser = person;
+            loggedInUser.setPassword(password); // Optionally store password
         } else {
-            throw new Exception("Failed to fetch user info after login: " + peopleResponse.body());
+            throw new Exception("Could not find user info after login.");
         }
-		// Session cookie (_session_id) is managed by HttpClient's CookieHandler
-
+        // Session cookie (_session_id) is managed by HttpClient's CookieHandler
+		// After successful login, initialize ApiClient
+		apiClient = new ApiClient();
+		apiClient.setBasePath(baseUrl + "/api");
+		// If authentication is needed, set it here (e.g., apiClient.setApiKey(...))
+		return serverFacade;
 	}
 
-	private void initCsrfToken() throws Exception {
-		final String url = String.format("%s/users/sign_in", baseUrl);
 
-		final HttpRequest request = HttpRequest.newBuilder().uri(URI.create(url))
-				.setHeader("User-Agent", "Java 11 HttpClient Bot") // add request header
-				.GET()
-				.build();
-
-		final HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-		
-		updateCsrfToken(response);
-	}
-
-	private void updateCsrfToken(final HttpResponse<String> response) {
-		final Document document = Jsoup.parse(response.body());
-		final Element meta = document.select("meta[name=csrf-token]").first();
-		if (meta != null) {
-			authenticityToken = meta.attr("content");
-			LOGGER.info("Authenticity token found and initialized");
-		} else {
-			LOGGER.warn("Authenticity token NOT found");
-		}
-	}
 
 	@Override
 	public synchronized String callServerMethod(String url) throws Exception {
@@ -263,4 +236,8 @@ public class Session implements ISession {
 		}
 		return "1";
 	}
+
+	public java.net.http.HttpClient getHttpClient() {
+        return httpClient;
+    }
 }
