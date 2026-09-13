@@ -213,6 +213,11 @@
 						</goals>
 						<configuration>
 							<inputSpec>${project.basedir}/src/main/resources/openapi.yaml</inputSpec>
+							<!-- Hitobito's spec has a handful of array schemas (e.g. mailing_lists
+							     filter params) that are missing an `items` type; 7.25.0's stricter
+							     validator rejects the whole spec for those pre-existing upstream
+							     issues even though nothing we use is affected. -->
+							<skipValidateSpec>true</skipValidateSpec>
 							<generatorName>java</generatorName>
 							<output>${project.build.directory}/generated-sources/openapi</output>
 							<apiPackage>ch.cevi.db.client.api</apiPackage>
