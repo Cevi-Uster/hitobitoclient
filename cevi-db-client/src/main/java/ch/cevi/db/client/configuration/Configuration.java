@@ -28,8 +28,6 @@ public class Configuration {
 	public static final String USERNAME_PROPERTY = "username";
 
 	public static final String PASSWORD_PROPERTY = "password";
-	
-	public static final String SECOND_FACTOR_CODE_PROPERTY = "secondFactorCode";
 
 	public static final String USE_PRIMARY_GROUP_AS_ROOT_PROPERY = "usePrimaryGroupAsRoot";
 
@@ -37,7 +35,6 @@ public class Configuration {
 	private BaseUrl baseUrl;
 	private String username;
 	private String password;
-	private String secondFactorCode;
 	private boolean usePrimaryGroupAsRoot;
 
 	public Configuration() {
@@ -70,15 +67,6 @@ public class Configuration {
 	public void setPassword(String password) {
 		propertyChangeSupport.firePropertyChange(PASSWORD_PROPERTY, this.password, password);
 		this.password = password;
-	}
-	
-	public String getSecondFactorCode() {
-		return secondFactorCode;
-	}
-	
-	public void setSecondFactorCode(String secondFactorCode) {
-		propertyChangeSupport.firePropertyChange(SECOND_FACTOR_CODE_PROPERTY, this.secondFactorCode, secondFactorCode);
-		this.secondFactorCode = secondFactorCode;
 	}
 
 	public boolean getUsePrimaryGroupAsRoot() {

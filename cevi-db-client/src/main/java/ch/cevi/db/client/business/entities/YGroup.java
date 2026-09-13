@@ -344,8 +344,4 @@ public class YGroup {
 		this.propertyChangeSupport.removePropertyChangeListener(pcl);
 	}
 
-	public void setChildren(List<YGroup> children) {
-		this.children = children;
-	}
-
 }

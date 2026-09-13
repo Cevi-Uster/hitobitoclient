@@ -1,23 +1,18 @@
 package ch.cevi.db.client.communication;
 
-import java.io.IOException;
-import java.net.CookieHandler;
-import java.net.CookieManager;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpClient.Redirect;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.time.Duration;
-import java.util.concurrent.Executors;
+import java.util.List;
 
+import javax.ws.rs.core.NewCookie;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.sun.jersey.api.client.Client;
+import com.sun.jersey.api.client.ClientResponse;
+import com.sun.jersey.api.client.WebResource;
 
-import ch.cevi.db.client.api.invoker.ApiClient;
-import ch.cevi.db.client.api.PeopleApi;
 import ch.cevi.db.client.business.entities.Person;
 import ch.cevi.db.client.configuration.Constants;
 
@@ -36,147 +31,64 @@ public class Session implements ISession {
 	private Client client;
 
 	private String baseUrl;
-	
+
+	private List<NewCookie> cookies;
+
 	private boolean usePrimaryGroupAsRoot;
-
-	private final HttpClient httpClient;
-
-	private ApiClient apiClient;
-
-	static {
-		CookieHandler.setDefault(new CookieManager());
-	}
 
 	public Session(String baseUrl, boolean usePrimaryGroupAsRoot) {
 		this.baseUrl = baseUrl;
 		this.usePrimaryGroupAsRoot = usePrimaryGroupAsRoot;
-		this.httpClient = HttpClient.newBuilder().version(HttpClient.Version.HTTP_2)
-				.connectTimeout(Duration.ofSeconds(Constants.CONNECTION_TIME_OUT))
-				.cookieHandler(CookieHandler.getDefault()).followRedirects(Redirect.ALWAYS)
-				.executor(Executors.newFixedThreadPool(16)).build();
 	}
 
-	public ApiClient getApiClient() {
-		return apiClient;
-	}
-
-	/**
-	 * Login to the new Cevi.DB API using two-step authentication if required.
-	 * @param email User email
-	 * @param password User password
-	 * @param secondFactorCode Optional second factor code (TOTP)
-	 */
 	@Override
-	public synchronized ServerFacade login(final String email, final String password, final String secondFactorCode) throws Exception {
-        // Step 0: GET /users/sign_in to fetch CSRF token
-        String signInUrl = baseUrl + "/users/sign_in";
-        HttpRequest signInGetRequest = HttpRequest.newBuilder()
-            .uri(URI.create(signInUrl))
-            .header("User-Agent", "Java 11 HttpClient Bot")
-            .GET()
-            .build();
-        HttpResponse<String> signInGetResponse = httpClient.send(signInGetRequest, HttpResponse.BodyHandlers.ofString());
-        String authenticityToken = null;
-        org.jsoup.nodes.Document doc = org.jsoup.Jsoup.parse(signInGetResponse.body());
-        org.jsoup.nodes.Element tokenInput = doc.selectFirst("input[name=authenticity_token]");
-        if (tokenInput != null) {
-            authenticityToken = tokenInput.attr("value");
-        } else {
-            throw new Exception("Could not find authenticity_token on login page");
-        }
-        // Step 1: POST credentials to /users/sign_in with authenticity_token
-        String loginUrl = baseUrl + "/users/sign_in";
-        String loginBody = String.format("person[login_identity]=%s&person[password]=%s&person[remember_me]=0&authenticity_token=%s", 
-            email, password, java.net.URLEncoder.encode(authenticityToken, java.nio.charset.StandardCharsets.UTF_8));
-        HttpRequest loginRequest = HttpRequest.newBuilder()
-            .uri(URI.create(loginUrl))
-            .header("User-Agent", "Java 11 HttpClient Bot")
-            .header("Content-Type", "application/x-www-form-urlencoded")
-            .POST(HttpRequest.BodyPublishers.ofString(loginBody))
-            .build();
-        HttpResponse<String> loginResponse = httpClient.send(loginRequest, HttpResponse.BodyHandlers.ofString());
-        LOGGER.info("Login response code: " + loginResponse.statusCode());
-        LOGGER.debug("Login response body:\n" + loginResponse.body());
-        // Check if second factor is required
-        boolean requiresSecondFactor = loginResponse.body().contains("second_factor");
-        if (requiresSecondFactor) {
-            if (secondFactorCode == null || secondFactorCode.isEmpty()) {
-                throw new Exception("Second factor code required but not provided.");
-            }
-            // Fetch authenticity_token for second factor page
-            org.jsoup.nodes.Document doc2 = org.jsoup.Jsoup.parse(loginResponse.body());
-            org.jsoup.nodes.Element tokenInput2 = doc2.selectFirst("input[name=authenticity_token]");
-            String secondFactorToken = tokenInput2 != null ? tokenInput2.attr("value") : authenticityToken;
-            // Step 2: POST second factor code
-            String secondFactorUrl = baseUrl + "/users/second_factor?second_factor=totp";
-            String secondFactorBody = String.format("second_factor_code=%s&commit=Absenden&authenticity_token=%s", 
-                secondFactorCode, java.net.URLEncoder.encode(secondFactorToken, java.nio.charset.StandardCharsets.UTF_8));
-            HttpRequest secondFactorRequest = HttpRequest.newBuilder()
-                .uri(URI.create(secondFactorUrl))
-                .header("User-Agent", "Java 11 HttpClient Bot")
-                .header("Content-Type", "application/x-www-form-urlencoded")
-                .POST(HttpRequest.BodyPublishers.ofString(secondFactorBody))
-                .build();
-            HttpResponse<String> secondFactorResponse = httpClient.send(secondFactorRequest, HttpResponse.BodyHandlers.ofString());
-            LOGGER.info("Second factor response code: " + secondFactorResponse.statusCode());
-            LOGGER.debug("Second factor response body:\n" + secondFactorResponse.body());
-            if (secondFactorResponse.statusCode() != 200) {
-                throw new Exception("Second factor authentication failed: " + secondFactorResponse.body());
-            }
-        } else if (loginResponse.statusCode() != 200) {
-            throw new Exception("Login failed: " + loginResponse.body());
-        }
-        // After successful login, fetch user info by email and set loggedInUser using ServerFacade
-        apiClient = new ApiClient();
-        apiClient.setBasePath(baseUrl + "/api");
-        ServerFacade serverFacade = new ServerFacade(this);
-        Person person = serverFacade.loadPersonByEmail(email);
-        if (person != null) {
-            loggedInUser = person;
-            loggedInUser.setPassword(password); // Optionally store password
-        } else {
-            throw new Exception("Could not find user info after login.");
-        }
-        // Session cookie (_session_id) is managed by HttpClient's CookieHandler
-		// After successful login, initialize ApiClient
-		apiClient = new ApiClient();
-		apiClient.setBasePath(baseUrl + "/api");
-		// If authentication is needed, set it here (e.g., apiClient.setApiKey(...))
-		return serverFacade;
+	public synchronized void login(String email, String password) throws Exception {
+		client = Client.create();
+		client.setConnectTimeout(Constants.CONNECTION_TIME_OUT);
+		String url = String.format("%s/users/sign_in.json?person[email]=%s&person[password]=%s", baseUrl, email, password);
+
+		WebResource webResource = client.resource(url);
+		ClientResponse response = webResource.accept("application/json").post(ClientResponse.class);
+
+		if (response.getStatus() != 200) {
+			throw new Exception("Got error from server, code: " + response.getStatus());
+		}
+
+		String output = response.getEntity(String.class);
+		cookies = response.getCookies();
+		// Try to get authentication token from output
+		JSONObject jsonObject = new JSONObject(output);
+		JSONArray peopleArray = jsonObject.optJSONArray("people");
+
+		if (peopleArray != null && peopleArray.length() > 0 && peopleArray.optJSONObject(0) != null) {
+			JSONObject personObject = peopleArray.optJSONObject(0);
+			Person person = new Person();
+			person.initFromJSONObject(personObject);
+			if (person != null) {
+				loggedInUser = person;
+				loggedInUser.setPassword(password);
+			}
+		} else {
+			throw new Exception("Unexpected answer from server: " + output);
+		}
 	}
-
-
 
 	@Override
 	public synchronized String callServerMethod(String url) throws Exception {
 		String result = null;
-		if (httpClient != null && loggedInUser != null) {
-			// add json header
-			HttpRequest request = HttpRequest.newBuilder().GET().uri(URI.create(url))
-					.setHeader("User-Agent", "Java 11 HttpClient Bot") // add request header
-					.header("Content-Type", "application/json").build();
-
-			long startTime = System.nanoTime();
-			int retryCount = 0;
-			while (retryCount < 3) {
-				try {
-					HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-					if (response.statusCode() != 200) {
-						retryCount++;
-						if (retryCount == 3) {
-							throw new Exception("Got error from server, code: " + response.statusCode());
-						}
-					} else {
-						result = response.body();
-						break;
-					}
-				} catch (IOException e) {
-					retryCount++;
-					if (retryCount == 3) {
-						throw new Exception("Got error from server: " + e.getMessage());
-					}
+		if (client != null && loggedInUser != null) {
+			WebResource webResource = client.resource(url);
+			if (cookies != null) {
+				for (NewCookie cookie : cookies) {
+					webResource.cookie(cookie);
 				}
 			}
+			long startTime = System.nanoTime();
+			ClientResponse response = webResource.accept("application/json").get(ClientResponse.class);
+			if (response.getStatus() != 200) {
+				throw new Exception("Got error from server, code: " + response.getStatus());
+			}
+			result = response.getEntity(String.class);
 			long endTime = System.nanoTime();
 			long duration = (endTime - startTime) / 1000000;
 			LOGGER.info("Server call duration: " + duration + " ms");
@@ -190,27 +102,27 @@ public class Session implements ISession {
 	public synchronized void logout() throws Exception {
 		try {
 			if (client != null && loggedInUser != null) {
-				String url = String.format("%s/users/token.json?person[email]=%s&person[password]=%s", baseUrl,
-						loggedInUser.getEmail(), loggedInUser.getPassword());
-				// add json header
-				HttpRequest request = HttpRequest.newBuilder().DELETE().uri(URI.create(url))
-						.setHeader("User-Agent", "Java 11 HttpClient Bot") // add request header
-						.header("Content-Type", "application/json").build();
-
-				HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-
-				// print status code
-				LOGGER.info("Login response code: " + response.statusCode());
-
-				// print response body
-				LOGGER.debug("Login response body:\n" + response.body());
-
-				if (response.statusCode() != 200) {
-					throw new Exception("Got error from server, code: " + response.statusCode());
+				String url = String.format("%s/users/token.json?person[email]=%s&person[password]=%s", baseUrl, loggedInUser.getEmail(), loggedInUser.getPassword());
+				WebResource webResource = client.resource(url);
+				if (cookies != null) {
+					for (NewCookie cookie : cookies) {
+						webResource.cookie(cookie);
+					}
 				}
+				ClientResponse response = webResource.accept("application/json").delete(ClientResponse.class);
+
+				if (response.getStatus() != 200) {
+					throw new Exception("Got error from server, code: " + response.getStatus());
+				}
+
 			}
 		} finally {
 			loggedInUser = null;
+			cookies = null;
+			if (client != null) {
+				client.destroy();
+				client = null;
+			}
 		}
 	}
 
@@ -236,8 +148,4 @@ public class Session implements ISession {
 		}
 		return "1";
 	}
-
-	public java.net.http.HttpClient getHttpClient() {
-        return httpClient;
-    }
 }

@@ -23,7 +23,7 @@ private static final String DB_USER;
 	@Before
 	public void buildSession() throws Exception {
 		session = new Session("https://cevi.puzzle.ch", false);
-		session.login(DB_USER, DB_PASSWORD, null);
+		session.login(DB_USER, DB_PASSWORD);
 	}
 
 	@Test

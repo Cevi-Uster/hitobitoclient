@@ -30,7 +30,7 @@ public class ServerFacadeTest {
 		System.out.println("************** testGetMainGroup ****************");
 		ISession session = new Session("https://cevi.puzzle.ch", false);
 		try {
-			session.login(DB_USER, DB_PASSWORD, null);
+			session.login(DB_USER, DB_PASSWORD);
 			ServerFacade serverFacade = new ServerFacade(session);
 			YGroup group = serverFacade.loadMainGroupWithDetails();
 			assertNotNull(group);
@@ -51,7 +51,7 @@ public class ServerFacadeTest {
 		System.out.println("************** testGetChildGroups ****************");
 		ISession session = new Session("https://cevi.puzzle.ch", false);
 		try {
-			session.login(DB_USER, DB_PASSWORD, null);
+			session.login(DB_USER, DB_PASSWORD);
 			ServerFacade serverFacade = new ServerFacade(session);
 			YGroup group = serverFacade.loadMainGroupWithDetails();
 			assertNotNull(group);
@@ -77,7 +77,7 @@ public class ServerFacadeTest {
 		System.out.println("************** testGetPersons ****************");
 		ISession session = new Session("https://cevi.puzzle.ch", false);
 		try {
-			session.login(DB_USER, DB_PASSWORD, null);
+			session.login(DB_USER, DB_PASSWORD);
 			ServerFacade serverFacade = new ServerFacade(session);
 			List<Person> personList = serverFacade.loadPersonList("52");
 			assertNotNull(personList);

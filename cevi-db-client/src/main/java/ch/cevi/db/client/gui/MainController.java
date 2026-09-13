@@ -38,7 +38,7 @@ public class MainController {
 			@Override
 			protected Object doInBackground() throws Exception {
 				try {
-					serverFacade = session.login(configuration.getUsername(), configuration.getPassword(), configuration.getSecondFactorCode());
+					session.login(configuration.getUsername(), configuration.getPassword());
 					loginSuccessfull = true;
 				} catch (Exception e) {
 					LOGGER.error("Login failed: " + e.getMessage());
@@ -62,6 +62,7 @@ public class MainController {
 	private void loginSucceded() {
 		LOGGER.info("Login succeded");
 		LOGGER.info("Try to load root group");
+		serverFacade = new ServerFacade(session);
 		SwingWorker<Object, Object> loadFirstGroupWorker = new SwingWorker<Object, Object>() {
 
 			YGroup rootGroup = null;
