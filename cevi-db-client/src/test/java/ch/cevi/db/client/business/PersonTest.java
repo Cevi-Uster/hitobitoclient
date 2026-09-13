@@ -11,11 +11,13 @@ public class PersonTest {
 
 	@Test
 	public void testInitFromJSONObject() {
-		JSONObject jsonObject = new JSONObject(
-				"{\"id\":\"513\",\"type\":\"people\",\"href\":\"http://cevi.puzzle.ch/groups/1/people/513.json\",\"first_name\":\"Marc\",\"last_name\":\"Baumgartner\",\"nickname\":\"Simba\",\"company_name\":\"\",\"company\":false,\"gender\":\"m\",\"email\":\"simba.uster@cevi.ch\",\"authentication_token\":\"7jPGGF9PbU3zvqyqMcx2\",\"last_sign_in_at\":\"2014-11-17T23:34:23.000+01:00\",\"current_sign_in_at\":\"2014-11-17T23:34:40.770+01:00\"}}");
+		JSONObject resource = new JSONObject(
+				"{\"id\":\"513\",\"type\":\"people\",\"attributes\":{\"first_name\":\"Marc\",\"last_name\":\"Baumgartner\",\"nickname\":\"Simba\",\"company\":false,\"gender\":\"m\",\"email\":\"simba.uster@cevi.ch\"}}");
 		Person person = new Person();
-		person.initFromJSONObject(jsonObject);
+		person.initFromJSONObject(resource);
+		assertEquals("513", person.getId());
+		assertEquals("Marc", person.getFirstName());
+		assertEquals("Baumgartner", person.getLastName());
 		assertEquals("simba.uster@cevi.ch", person.getEmail());
-		assertEquals("7jPGGF9PbU3zvqyqMcx2", person.getAuthenticationToken());
 	}
 }

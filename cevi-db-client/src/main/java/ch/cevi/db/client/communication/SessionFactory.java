@@ -5,7 +5,8 @@ import ch.cevi.db.client.configuration.Configuration;
 public class SessionFactory {
 
 	public static ISession createSession(Configuration configuration) {
-		return new Session(configuration.getBaseUrl().toString(), configuration.getUsePrimaryGroupAsRoot());
+		return new Session(configuration.getBaseUrl().toString(), configuration.getBaseUrl().getOauthClientId(),
+				configuration.getUsePrimaryGroupAsRoot());
 	}
-	
+
 }

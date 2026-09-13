@@ -64,12 +64,22 @@ public class PhoneNumber {
 		this.owner = owner;
 	}
 
-	public void initFromJSONObject(JSONObject numberObject) {
-		if (numberObject != null) {
-			id = numberObject.optString("id");
-			number = numberObject.optString("number");
-			label = numberObject.optString("label");
-			isPublic = numberObject.optBoolean("public");
+	/**
+	 * Populates this phone number from a JSON:API "phone_numbers" resource
+	 * object ({@code {"id": ..., "attributes": {"number": ..., "label": ...,
+	 * "public": ...}}}), as returned under {@code included} when a people
+	 * request includes {@code phone_numbers}.
+	 */
+	public void initFromJSONObject(JSONObject resource) {
+		if (resource == null) {
+			return;
+		}
+		id = resource.optString("id", null);
+		JSONObject attributes = resource.optJSONObject("attributes");
+		if (attributes != null) {
+			number = attributes.optString("number", null);
+			label = attributes.optString("label", null);
+			isPublic = attributes.optBoolean("public", false);
 		}
 	}
 

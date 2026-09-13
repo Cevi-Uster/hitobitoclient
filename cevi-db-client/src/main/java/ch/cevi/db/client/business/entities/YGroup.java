@@ -2,12 +2,10 @@ package ch.cevi.db.client.business.entities;
 
 import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
-import java.beans.Transient;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
-
-import javax.xml.bind.DatatypeConverter;
 
 import org.json.JSONObject;
 
@@ -268,47 +266,59 @@ public class YGroup {
 		return groupMembers;
 	}
 
-	public void initBasicDataFromJSONObject(JSONObject groupObject) {
-		if (groupObject != null) {
-			id = groupObject.optString("id");
-			name = groupObject.optString("name");
-			groupType = groupObject.optString("group_type");
-			parentYGroupId = groupObject.optString("parent");
+	/**
+	 * Populates the identity fields of this group from a JSON:API "groups"
+	 * resource object. {@code groupType} and {@code foundingDate} have no
+	 * counterpart in the JSON:API {@code groups} attribute schema and are
+	 * left unset -- see the migration notes on {@link Role#getRoleType()}
+	 * for why {@code groupType} matters (it feeds {@link
+	 * Role#getFullyQuallifiedRoleName()} and {@link
+	 * ch.cevi.db.client.business.RoleComparator}'s sort order).
+	 */
+	public void initBasicDataFromJSONObject(JSONObject resource) {
+		if (resource == null) {
+			return;
+		}
+		id = resource.optString("id", null);
+		JSONObject attributes = resource.optJSONObject("attributes");
+		if (attributes != null) {
+			name = attributes.optString("name", null);
+			parentYGroupId = attributes.optString("parent_id", null);
 		}
 	}
 
-	public void initDetailDataFromJSONObject(JSONObject groupObject) {
-		if (groupObject != null) {
-			type = groupObject.optString("type");
-			isLayer = groupObject.optBoolean("layer");
-			shortName = groupObject.optString("short_name");
-			email = groupObject.optString("email");
-			address = groupObject.optString("address");
-			zipCode = groupObject.optString("zip_code");
-			town = groupObject.optString("town");
-			country = groupObject.optString("country");
-			String foundingDateString = groupObject.optString("founding_date");
-			if (foundingDateString != null && !foundingDateString.isEmpty()) {
-				foundingDate = DatatypeConverter.parseDateTime(foundingDateString).getTime();
-			}
-			String createdAtString = groupObject.optString("created_at");
-			if (createdAtString != null && !createdAtString.isEmpty()) {
-				createdAt = DatatypeConverter.parseDateTime(createdAtString).getTime();
-			}
-			String updatedAtString = groupObject.optString("updated_at");
-			if (updatedAtString != null && !updatedAtString.isEmpty()) {
-				updatedAt = DatatypeConverter.parseDateTime(updatedAtString).getTime();
-			}
-			String deletedAtString = groupObject.optString("deleted_at");
-			if (deletedAtString != null && !deletedAtString.isEmpty()) {
-				deletedAt = DatatypeConverter.parseDateTime(deletedAtString).getTime();
-			}
+	public void initDetailDataFromJSONObject(JSONObject resource) {
+		if (resource == null) {
+			return;
 		}
+		JSONObject attributes = resource.optJSONObject("attributes");
+		if (attributes != null) {
+			type = attributes.optString("type", null);
+			isLayer = attributes.optBoolean("layer", false);
+			shortName = attributes.optString("short_name", null);
+			email = attributes.optString("email", null);
+			address = attributes.optString("address", null);
+			zipCode = attributes.optString("zip_code", null);
+			town = attributes.optString("town", null);
+			country = attributes.optString("country", null);
+			layerGroupId = attributes.optString("layer_group_id", null);
+			createdAt = parseOffsetDateTime(attributes.optString("created_at", null));
+			updatedAt = parseOffsetDateTime(attributes.optString("updated_at", null));
+			deletedAt = parseOffsetDateTime(attributes.optString("deleted_at", null));
+		}
+	}
+
+	private static Date parseOffsetDateTime(String value) {
+		if (value == null || value.isEmpty()) {
+			return null;
+		}
+		return Date.from(OffsetDateTime.parse(value).toInstant());
 	}
 
 	public void initFromOtherGroup(YGroup otherGroup) {
 		if (otherGroup != this) {
 			this.id = otherGroup.id;
+			this.version = otherGroup.version;
 			this.name = otherGroup.name;
 			this.shortName = otherGroup.shortName;
 			this.email = otherGroup.email;
@@ -322,10 +332,13 @@ public class YGroup {
 			this.deletedAt = otherGroup.deletedAt;
 			this.groupType = otherGroup.groupType;
 			this.isLayer = otherGroup.isLayer;
+			this.layerGroupId = otherGroup.layerGroupId;
 			this.type = otherGroup.type;
 			this.parentYGroupId = otherGroup.parentYGroupId;
+			this.parentYGroup = otherGroup.parentYGroup;
 			this.children.clear();
 			this.children.addAll(otherGroup.children);
+			this.groupRoles.clear();
 			this.groupRoles.addAll(otherGroup.getGroupRoles());
 			this.isFullyLoaded = otherGroup.isFullyLoaded;
 		}
@@ -342,6 +355,10 @@ public class YGroup {
 
 	public void removePropertyChangeListener(PropertyChangeListener pcl) {
 		this.propertyChangeSupport.removePropertyChangeListener(pcl);
+	}
+
+	public void setChildren(List<YGroup> children) {
+		this.children = children;
 	}
 
 }

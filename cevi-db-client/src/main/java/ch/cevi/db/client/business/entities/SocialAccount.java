@@ -64,12 +64,21 @@ public class SocialAccount {
 		this.owner = owner;
 	}
 
-	public void initFromJSONObject(JSONObject socialAccountObject) {
-		if (socialAccountObject != null) {
-			id = socialAccountObject.optString("id");
-			name = socialAccountObject.optString("name");
-			label = socialAccountObject.optString("label");
-			publicVisible = socialAccountObject.optBoolean("public");
+	/**
+	 * Populates this social account from a JSON:API "social_accounts"
+	 * resource object, as returned under {@code included} when a people
+	 * request includes {@code social_accounts}.
+	 */
+	public void initFromJSONObject(JSONObject resource) {
+		if (resource == null) {
+			return;
+		}
+		id = resource.optString("id", null);
+		JSONObject attributes = resource.optJSONObject("attributes");
+		if (attributes != null) {
+			name = attributes.optString("name", null);
+			label = attributes.optString("label", null);
+			publicVisible = attributes.optBoolean("public", false);
 		}
 	}
 }

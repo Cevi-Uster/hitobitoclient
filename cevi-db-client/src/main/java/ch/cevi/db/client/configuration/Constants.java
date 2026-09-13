@@ -2,7 +2,23 @@ package ch.cevi.db.client.configuration;
 
 public class Constants {
 	public static final int CONNECTION_TIME_OUT = 5000;
-	
+
+	/**
+	 * Fixed loopback port the OAuth2 login flow listens on for the authorization
+	 * redirect. Must match the redirect URI registered for the OAuth application
+	 * on the Hitobito instance (Doorkeeper matches redirect URIs exactly).
+	 */
+	public static final int OAUTH_CALLBACK_PORT = 17493;
+
+	public static final String OAUTH_REDIRECT_URI = "http://127.0.0.1:" + OAUTH_CALLBACK_PORT + "/callback";
+
+	/**
+	 * How long to wait for the user to complete the login in their browser
+	 * before giving up.
+	 */
+	public static final int OAUTH_LOGIN_TIMEOUT_SECONDS = 300;
+
+
 	// @formatter:off
 	public final static String ABOUT_DIALOG_LICENSE = "The MIT License (MIT)\n" + "Copyright (c) 2016 Marc Baumgartner\n\n"
 			+ "Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the \"Software\"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:\n\n"

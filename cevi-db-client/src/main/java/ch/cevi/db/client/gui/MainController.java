@@ -38,7 +38,7 @@ public class MainController {
 			@Override
 			protected Object doInBackground() throws Exception {
 				try {
-					session.login(configuration.getUsername(), configuration.getPassword());
+					session.login();
 					loginSuccessfull = true;
 				} catch (Exception e) {
 					LOGGER.error("Login failed: " + e.getMessage());

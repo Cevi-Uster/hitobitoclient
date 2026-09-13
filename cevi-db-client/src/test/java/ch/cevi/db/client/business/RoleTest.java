@@ -12,17 +12,26 @@ import ch.cevi.db.client.business.entities.Role;
 public class RoleTest {
 
 	@Test
-	public void testInitFromJSONObject() {
-		JSONObject jsonObject = new JSONObject(
-				"{\"id\":\"11\",\"role_type\":\"Aktive/-r Kursleiter/-in\",\"label\":\"Chef\",\"created_at\":\"2014-05-15T16:22:03.000+02:00\",\"updated_at\":\"2014-05-15T16:22:03.000+02:00\",\"deleted_at\":null,\"links\":{\"group\":\"10\",\"layer_group\":\"5\"}}]");
+	public void testInitFromJSONObjectActiveRole() {
+		JSONObject resource = new JSONObject(
+				"{\"id\":\"11\",\"type\":\"roles\",\"attributes\":{\"name\":\"Aktive/-r Kursleiter/-in\",\"type\":\"Group::Kurs::Kursleiter\",\"label\":\"Chef\",\"group_id\":10,\"created_at\":\"2014-05-15T16:22:03.000+02:00\",\"updated_at\":\"2014-05-15T16:22:03.000+02:00\"}}");
 		Role role = new Role();
-		role.initFromJSONObject(jsonObject);
+		role.initFromJSONObject(resource);
 		assertEquals("Aktive/-r Kursleiter/-in", role.getRoleType());
 		assertEquals("Chef", role.getLabel());
 		assertNotNull(role.getCreatedAt());
 		assertNotNull(role.getUpdatedAt());
-		assertNull(role.getDeletedAt());
 		assertEquals("10", role.getGroupId());
-		assertEquals("5", role.getLayerGroupId());
+		// no deleted_at in the new API; getDeletedAt() == null means "active"
+		assertNull(role.getDeletedAt());
+	}
+
+	@Test
+	public void testInitFromJSONObjectEndedRoleIsTreatedAsDeleted() {
+		JSONObject resource = new JSONObject(
+				"{\"id\":\"12\",\"type\":\"roles\",\"attributes\":{\"name\":\"Leiter\",\"group_id\":10,\"end_on\":\"2020-01-01\"}}");
+		Role role = new Role();
+		role.initFromJSONObject(resource);
+		assertNotNull(role.getDeletedAt());
 	}
 }

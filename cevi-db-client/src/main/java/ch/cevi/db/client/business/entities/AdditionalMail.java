@@ -74,13 +74,22 @@ public class AdditionalMail {
 		this.owner = owner;
 	}
 
-	public void initFromJSONObject(JSONObject additionalMailObject) {
-		if (additionalMailObject != null) {
-			id = additionalMailObject.optString("id");
-			email = additionalMailObject.optString("email");
-			label = additionalMailObject.optString("label");
-			publicVisible = additionalMailObject.optBoolean("public");
-			includeInMailings = additionalMailObject.optBoolean("mailings");
+	/**
+	 * Populates this additional email from a JSON:API "additional_emails"
+	 * resource object, as returned under {@code included} when a people
+	 * request includes {@code additional_emails}.
+	 */
+	public void initFromJSONObject(JSONObject resource) {
+		if (resource == null) {
+			return;
+		}
+		id = resource.optString("id", null);
+		JSONObject attributes = resource.optJSONObject("attributes");
+		if (attributes != null) {
+			email = attributes.optString("email", null);
+			label = attributes.optString("label", null);
+			publicVisible = attributes.optBoolean("public", false);
+			includeInMailings = attributes.optBoolean("mailings", false);
 		}
 	}
 }

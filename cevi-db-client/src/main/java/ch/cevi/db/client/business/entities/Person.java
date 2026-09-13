@@ -5,9 +5,11 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 
-import org.json.JSONArray;
 import org.json.JSONObject;
+
+import ch.cevi.db.client.communication.JsonApiClient;
 
 public class Person {
 
@@ -95,10 +97,6 @@ public class Person {
 
 	private List<SocialAccount> socialAccounts;
 
-	private String password;
-
-	private String authenticationToken;
-
 	public String getId() {
 		return id;
 	}
@@ -185,22 +183,6 @@ public class Person {
 
 	public void setEmail(String email) {
 		this.email = email;
-	}
-
-	public String getPassword() {
-		return password;
-	}
-
-	public void setPassword(String password) {
-		this.password = password;
-	}
-
-	public String getAuthenticationToken() {
-		return authenticationToken;
-	}
-
-	public void setAuthenticationToken(String authenticationToken) {
-		this.authenticationToken = authenticationToken;
 	}
 
 	public String getAddress() {
@@ -443,138 +425,112 @@ public class Person {
 		this.primaryGroupId = primaryGroupId;
 	}
 
-	public void initFromJSONObject(JSONObject personObject) {
-		if (personObject != null) {
-			id = personObject.optString("id");
-			type = personObject.optString("type");
-			href = personObject.optString("href");
-			firstName = personObject.optString("first_name");
-			lastName = personObject.optString("last_name");
-			nickname = personObject.optString("nickname");
-			companyName = personObject.optString("company_name");
-			isCompany = personObject.optBoolean("company", false);
-			address = personObject.optString("address");
-			zipCode = personObject.optString("zip_code");
-			town = personObject.optString("town");
-			country = personObject.optString("country");
-			gender = personObject.optString("gender");
-			email = personObject.optString("email");
-			authenticationToken = personObject.optString("authentication_token");
-			lastSignInAt = personObject.optString("last_sign_in_at");
-			currentSignInAt = personObject.optString("current_sign_in_at");
-			localDepartment = personObject.optString("ortsgruppe");
-			additionalInformation = personObject.optString("additional_information");
-			pictureUrl = personObject.optString("picture_url");
-			salutationParents = personObject.optString("salutation_parents");
-			nameParents = personObject.optString("name_parents");
-			canton = personObject.optString("canton");
-			jsNumber = personObject.optString("j_s_number");
-			nationalityJS = personObject.optString("nationality_j_s");
-			ahvNumber = personObject.optString("ahv_number");
-			title = personObject.optString("title");
-			profession = personObject.optString("profession");
-			try {
-				joined = JSON_DATE_FORMAT.parse(personObject.optString("joined"));
-			} catch (ParseException pe) {
-				// ignore
-			}
-			ahvNumberOld = personObject.optString("ahv_number_old");
-			memberCardNumber = personObject.optString("member_card_number");
-			nationality = personObject.optString("nationality");
-			salutation = personObject.optString("salutation");
-			correspondenceLanguage = personObject.optString("correspondence_language");
-			confession = personObject.optString("confession");
-			try {
-				birthday = JSON_DATE_FORMAT.parse(personObject.optString("birthday"));
-			} catch (ParseException pe) {
-				// ignore
-			}
-			JSONObject linkObject = personObject.optJSONObject("links");
-			if (linkObject != null) {
-				primaryGroupId = linkObject.optString("primary_group");
-			}
-			// password is never delivered from server
+	/**
+	 * Populates this person from a JSON:API "people" resource object
+	 * ({@code {"id": ..., "type": "people", "attributes": {...}}}), as
+	 * returned under {@code data} or {@code included} by the new Hitobito
+	 * JSON:API.
+	 * <p>
+	 * The people attribute schema does not carry every field the legacy API
+	 * exposed: {@code salutation}, {@code title}, {@code canton}, {@code
+	 * salutation_parents}, {@code name_parents}, {@code j_s_number}, {@code
+	 * nationality_j_s}, {@code ahv_number}, {@code ahv_number_old}, {@code
+	 * profession}, {@code joined}, {@code member_card_number}, {@code
+	 * nationality}, {@code correspondence_language}, {@code confession} and
+	 * {@code ortsgruppe} (local department) have no counterpart in the
+	 * published spec as of this writing and are left unset here; see the
+	 * migration notes for how to verify whether the live API actually
+	 * returns them regardless (Cevi-specific "wagon" attributes sometimes
+	 * exist beyond a vendored spec).
+	 */
+	public void initFromJSONObject(JSONObject resource) {
+		if (resource == null) {
+			return;
 		}
-	}
-
-	public void addPhoneNumbers(JSONObject linksObject, JSONArray phoneNumbersArray) {
-		JSONArray phoneNumberIdArray = linksObject.optJSONArray("phone_numbers");
-		List<PhoneNumber> phoneNumbers = new ArrayList<PhoneNumber>();
-		this.setPhoneNumbers(phoneNumbers);
-		if (phoneNumberIdArray != null && phoneNumbersArray != null) {
-			for (int phoneNumberIdIndex = 0; phoneNumberIdIndex < phoneNumberIdArray.length(); phoneNumberIdIndex++) {
-				for (int phoneNumberIndex = 0; phoneNumberIndex < phoneNumbersArray.length(); phoneNumberIndex++) {
-					JSONObject phoneNumberObject = phoneNumbersArray.optJSONObject(phoneNumberIndex);
-					if (phoneNumberObject != null && phoneNumberIdArray.optString(phoneNumberIdIndex).equals(phoneNumberObject.opt("id"))) {
-						PhoneNumber phoneNumber = new PhoneNumber();
-						phoneNumber.setOwner(this);
-						phoneNumber.initFromJSONObject(phoneNumberObject);
-						phoneNumbers.add(phoneNumber);
-					}
+		id = resource.optString("id", null);
+		type = resource.optString("type", null);
+		JSONObject attributes = resource.optJSONObject("attributes");
+		if (attributes != null) {
+			firstName = attributes.optString("first_name", null);
+			lastName = attributes.optString("last_name", null);
+			nickname = attributes.optString("nickname", null);
+			companyName = attributes.optString("company_name", null);
+			isCompany = attributes.optBoolean("company", false);
+			email = attributes.optString("email", null);
+			address = attributes.optString("address", null);
+			zipCode = attributes.optString("zip_code", null);
+			town = attributes.optString("town", null);
+			country = attributes.optString("country", null);
+			gender = attributes.optString("gender", null);
+			additionalInformation = attributes.optString("additional_information", null);
+			pictureUrl = attributes.optString("picture", null);
+			primaryGroupId = attributes.optString("primary_group_id", null);
+			String birthdayString = attributes.optString("birthday", null);
+			if (birthdayString != null && !birthdayString.isEmpty()) {
+				try {
+					birthday = JSON_DATE_FORMAT.parse(birthdayString);
+				} catch (ParseException pe) {
+					// ignore
 				}
 			}
 		}
+	}
+
+	/**
+	 * Like {@link #initFromJSONObject(JSONObject)}, but also populates phone
+	 * numbers, social accounts and additional emails from the given
+	 * resource's {@code relationships}, resolved against an included-resource
+	 * index (see {@link JsonApiClient#indexIncluded}) -- i.e. the caller must
+	 * have fetched this person with {@code include=phone_numbers,
+	 * social_accounts,additional_emails}.
+	 * <p>
+	 * Roles are deliberately not populated here: group membership is loaded
+	 * group-first (one {@code /roles?filter[group_id][eq]=...} call covers a
+	 * whole group), and {@link #addRole(Role)} is used to attach each
+	 * resulting {@link Role} to the same {@link Person} instance handed back
+	 * by this method, rather than fetching and re-instantiating roles a
+	 * second time per person.
+	 */
+	public void initFromJsonApiResource(JSONObject resource, Map<String, JSONObject> included) {
+		initFromJSONObject(resource);
+
+		List<PhoneNumber> phones = new ArrayList<>();
+		for (JSONObject phoneResource : JsonApiClient.resolveToMany(resource, "phone_numbers", included)) {
+			PhoneNumber phoneNumber = new PhoneNumber();
+			phoneNumber.setOwner(this);
+			phoneNumber.initFromJSONObject(phoneResource);
+			phones.add(phoneNumber);
+		}
+		this.phoneNumbers = phones;
+
+		List<SocialAccount> accounts = new ArrayList<>();
+		for (JSONObject accountResource : JsonApiClient.resolveToMany(resource, "social_accounts", included)) {
+			SocialAccount socialAccount = new SocialAccount();
+			socialAccount.setOwner(this);
+			socialAccount.initFromJSONObject(accountResource);
+			accounts.add(socialAccount);
+		}
+		this.socialAccounts = accounts;
+
+		List<AdditionalMail> mails = new ArrayList<>();
+		for (JSONObject mailResource : JsonApiClient.resolveToMany(resource, "additional_emails", included)) {
+			AdditionalMail additionalMail = new AdditionalMail();
+			additionalMail.setOwner(this);
+			additionalMail.initFromJSONObject(mailResource);
+			mails.add(additionalMail);
+		}
+		this.additionalMails = mails;
+	}
+
+	public void addRole(Role role) {
+		if (this.roles == null) {
+			this.roles = new ArrayList<>();
+		}
+		this.roles.add(role);
 	}
 
 	public boolean removeRole(Role role) {
-		return this.roles.remove(role);
-	}
-
-	public void addRoles(JSONObject linksObject, JSONArray rolesArray) {
-		JSONArray rolesIdArray = linksObject.optJSONArray("roles");
-		List<Role> roles = new ArrayList<Role>();
-		this.setRoles(roles);
-		if (rolesIdArray != null && rolesArray != null) {
-			for (int roleIdIndex = 0; roleIdIndex < rolesIdArray.length(); roleIdIndex++) {
-				for (int roleIndex = 0; roleIndex < rolesArray.length(); roleIndex++) {
-					JSONObject roleObject = rolesArray.optJSONObject(roleIndex);
-					if (roleObject != null && rolesIdArray.optString(roleIdIndex).equals(roleObject.opt("id"))) {
-						Role role = new Role();
-						role.setPerson(this);
-						role.initFromJSONObject(roleObject);
-						roles.add(role);
-					}
-				}
-			}
-		}
-	}
-
-	public void addAdditionalMails(JSONObject linksObject, JSONArray additionalMailsArray) {
-		JSONArray additionalMailIdArray = linksObject.optJSONArray("additional_emails");
-		List<AdditionalMail> additionalMails = new ArrayList<AdditionalMail>();
-		this.setAdditionalMails(additionalMails);
-		if (additionalMailIdArray != null && additionalMailsArray != null) {
-			for (int additionalMailIdIndex = 0; additionalMailIdIndex < additionalMailIdArray.length(); additionalMailIdIndex++) {
-				for (int additionalMailIndex = 0; additionalMailIndex < additionalMailsArray.length(); additionalMailIndex++) {
-					JSONObject additionalMailObject = additionalMailsArray.optJSONObject(additionalMailIndex);
-					if (additionalMailObject != null && additionalMailIdArray.optString(additionalMailIdIndex).equals(additionalMailObject.opt("id"))) {
-						AdditionalMail additionalMail = new AdditionalMail();
-						additionalMail.setOwner(this);
-						additionalMail.initFromJSONObject(additionalMailObject);
-						additionalMails.add(additionalMail);
-					}
-				}
-			}
-		}
-	}
-
-	public void addSocialAccounts(JSONObject linksObject, JSONArray socialAccountsArray) {
-		JSONArray socialAccountsIdArray = linksObject.optJSONArray("social_accounts");
-		List<SocialAccount> socialAccounts = new ArrayList<SocialAccount>();
-		this.setSocialAccounts(socialAccounts);
-		if (socialAccountsIdArray != null && socialAccountsArray != null) {
-			for (int socialAccountIdIndex = 0; socialAccountIdIndex < socialAccountsIdArray.length(); socialAccountIdIndex++) {
-				for (int socialAccountIndex = 0; socialAccountIndex < socialAccountsArray.length(); socialAccountIndex++) {
-					JSONObject socialAccountObject = socialAccountsArray.optJSONObject(socialAccountIndex);
-					if (socialAccountObject != null && socialAccountsIdArray.optString(socialAccountIdIndex).equals(socialAccountObject.opt("id"))) {
-						SocialAccount socialAccount = new SocialAccount();
-						socialAccount.setOwner(this);
-						socialAccount.initFromJSONObject(socialAccountObject);
-						socialAccounts.add(socialAccount);
-					}
-				}
-			}
-		}
+		return this.roles != null && this.roles.remove(role);
 	}
 
 	@Override

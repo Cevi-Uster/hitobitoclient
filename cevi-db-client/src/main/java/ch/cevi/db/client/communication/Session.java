@@ -1,170 +1,148 @@
 package ch.cevi.db.client.communication;
 
-import java.io.IOException;
-import java.net.CookieHandler;
-import java.net.CookieManager;
 import java.net.URI;
 import java.net.http.HttpClient;
-import java.net.http.HttpClient.Redirect;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.concurrent.Executors;
 
-import org.json.JSONArray;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.sun.jersey.api.client.Client;
-
+import ch.cevi.db.client.api.invoker.ApiClient;
 import ch.cevi.db.client.business.entities.Person;
 import ch.cevi.db.client.configuration.Constants;
 
 /**
- * Represents a session between this client and the hitobito server
+ * Represents a session between this client and the Hitobito server, backed
+ * by an OAuth2 access/refresh token pair (see {@link OAuthLoginFlow}) rather
+ * than a browser session cookie. Tokens are kept in memory only, matching the
+ * app's existing behavior of not persisting credentials to disk; logging in
+ * again after a restart repeats the browser login.
  *
  * @author developer
- *
  */
 public class Session implements ISession {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(Session.class.getName());
 
-	private Person loggedInUser;
+	private final String baseUrl;
 
-	private Client client;
-
-	private String baseUrl;
-
-	private boolean usePrimaryGroupAsRoot;
+	private final boolean usePrimaryGroupAsRoot;
 
 	private final HttpClient httpClient;
 
-	static {
-		CookieHandler.setDefault(new CookieManager());
-	}
+	private final OAuthLoginFlow oauthLoginFlow;
 
-	public Session(String baseUrl, boolean usePrimaryGroupAsRoot) {
+	private Person loggedInUser;
+
+	private ApiClient apiClient;
+
+	private JsonApiClient jsonApiClient;
+
+	private volatile String accessToken;
+
+	private volatile String refreshToken;
+
+	private volatile Instant accessTokenExpiresAt;
+
+	public Session(String baseUrl, String oauthClientId, boolean usePrimaryGroupAsRoot) {
 		this.baseUrl = baseUrl;
 		this.usePrimaryGroupAsRoot = usePrimaryGroupAsRoot;
 		this.httpClient = HttpClient.newBuilder()
-	            .version(HttpClient.Version.HTTP_2)
-	            .connectTimeout(Duration.ofSeconds(Constants.CONNECTION_TIME_OUT))
-	            .cookieHandler(CookieHandler.getDefault())
-	            .followRedirects(Redirect.ALWAYS)
-	            .executor(Executors.newFixedThreadPool(16))
-	            .build();
+				.version(HttpClient.Version.HTTP_2)
+				.connectTimeout(Duration.ofMillis(Constants.CONNECTION_TIME_OUT))
+				.executor(Executors.newFixedThreadPool(16))
+				.build();
+		this.oauthLoginFlow = new OAuthLoginFlow(baseUrl, oauthClientId, httpClient);
 	}
 
 	@Override
-	public synchronized void login(String email, String password) throws Exception {
-		String url = String.format("%s/users/sign_in.json?person[email]=%s&person[password]=%s", baseUrl, email, password);
-
-		// add json header
-        HttpRequest request = HttpRequest.newBuilder()
-                .POST(HttpRequest.BodyPublishers.ofString(""))
-                .uri(URI.create(url))
-                .setHeader("User-Agent", "Java 11 HttpClient Bot") // add request header
-                .header("Content-Type", "application/json")
-                .build();
-
-        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-
-        // print status code
-        LOGGER.info("Login response code: " + response.statusCode());
-
-        // print response body
-        LOGGER.debug("Login response body:\n" +response.body());
-
-        String output = response.body();
-		// Try to get authentication token from output
-		JSONObject jsonObject = new JSONObject(output);
-		JSONArray peopleArray = jsonObject.optJSONArray("people");
-
-		if (peopleArray != null && peopleArray.length() > 0 && peopleArray.optJSONObject(0) != null) {
-			JSONObject personObject = peopleArray.optJSONObject(0);
-			Person person = new Person();
-			person.initFromJSONObject(personObject);
-			if (person != null) {
-				loggedInUser = person;
-				loggedInUser.setPassword(password);
-			}
-		} else {
-			throw new Exception("Unexpected answer from server: " + output);
-		}
-
+	public synchronized void login() throws Exception {
+		applyTokens(oauthLoginFlow.login());
+		apiClient = new ApiClient();
+		apiClient.setBasePath(baseUrl + "/api");
+		apiClient.addDefaultHeader("Authorization", "Bearer " + accessToken);
+		jsonApiClient = new JsonApiClient(apiClient, httpClient, () -> accessToken);
+		loggedInUser = resolveLoggedInUser();
 	}
 
-	@Override
-	public synchronized String callServerMethod(String url) throws Exception {
-		String result = null;
-		if (httpClient != null && loggedInUser != null) {
-			// add json header
-	        HttpRequest request = HttpRequest.newBuilder()
-	                .GET()
-	                .uri(URI.create(url))
-	                .setHeader("User-Agent", "Java 11 HttpClient Bot") // add request header
-	                .header("Content-Type", "application/json")
-	                .build();
-
-
-			long startTime = System.nanoTime();
-			int retryCount = 0;
-			while (retryCount < 3) {
-				try {
-					HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-					if (response.statusCode() != 200) {
-						retryCount++;
-						if (retryCount == 3) {
-							throw new Exception("Got error from server, code: " + response.statusCode());
-						}
-					} else {
-						result = response.body();
-						break;
-					}
-				} catch (IOException e) {
-					retryCount++;
-					if (retryCount == 3) {
-						throw new Exception("Got error from server: " + e.getMessage());
-					}
-				}
-			}
-			long endTime = System.nanoTime();
-			long duration = (endTime - startTime) / 1000000;
-			LOGGER.info("Server call duration: " + duration + " ms");
-		} else {
-			throw new Exception("User is not logged in at current time!");
+	private void applyTokens(OAuthLoginFlow.TokenResponse tokens) {
+		this.accessToken = tokens.accessToken();
+		if (tokens.refreshToken() != null) {
+			this.refreshToken = tokens.refreshToken();
 		}
-		return result;
+		this.accessTokenExpiresAt = tokens.expiresAt();
 	}
 
+	/**
+	 * Refreshes the access token if it has expired or is about to. Business
+	 * operations that may run long after login should call this first; {@link
+	 * #getApiClient()}'s {@code Authorization} header is updated in place.
+	 */
+	public synchronized void ensureFreshAccessToken() throws Exception {
+		if (refreshToken == null || accessTokenExpiresAt == null) {
+			return;
+		}
+		if (Instant.now().isBefore(accessTokenExpiresAt.minusSeconds(30))) {
+			return;
+		}
+		LOGGER.info("Access token expired or expiring soon, refreshing");
+		applyTokens(oauthLoginFlow.refresh(refreshToken));
+		apiClient.addDefaultHeader("Authorization", "Bearer " + accessToken);
+	}
+
+	/**
+	 * Resolves who just logged in via Doorkeeper's token-info endpoint (which
+	 * reports the {@code resource_owner_id} the access token was issued for),
+	 * then loads that person through the JSON:API.
+	 */
+	private Person resolveLoggedInUser() throws Exception {
+		JSONObject tokenInfo = fetchTokenInfo();
+		String personId = tokenInfo.optString("resource_owner_id", null);
+		if (personId == null || personId.isEmpty()) {
+			throw new Exception("Could not determine the logged-in person from the OAuth token.");
+		}
+		JSONObject personDocument = jsonApiClient.get("/people/" + personId);
+		JSONObject resource = personDocument.optJSONObject("data");
+		if (resource == null) {
+			throw new Exception("Could not load the logged-in person (id " + personId + ") after login.");
+		}
+		Person person = new Person();
+		person.initFromJSONObject(resource);
+		return person;
+	}
+
+	private JSONObject fetchTokenInfo() throws Exception {
+		HttpRequest request = HttpRequest.newBuilder()
+				.uri(URI.create(baseUrl + "/oauth/token/info"))
+				.header("Authorization", "Bearer " + accessToken)
+				.header("Accept", "application/json")
+				.GET()
+				.build();
+		HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+		if (response.statusCode() != 200) {
+			throw new Exception("Could not fetch OAuth token info, status " + response.statusCode() + ": " + response.body());
+		}
+		return new JSONObject(response.body());
+	}
 
 	@Override
 	public synchronized void logout() throws Exception {
 		try {
-			if (client != null && loggedInUser != null) {
-				String url = String.format("%s/users/token.json?person[email]=%s&person[password]=%s", baseUrl,
-						loggedInUser.getEmail(), loggedInUser.getPassword());
-				// add json header
-				HttpRequest request = HttpRequest.newBuilder().DELETE()
-						.uri(URI.create(url)).setHeader("User-Agent", "Java 11 HttpClient Bot") // add request header
-						.header("Content-Type", "application/json").build();
-
-				HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-
-				// print status code
-				LOGGER.info("Login response code: " + response.statusCode());
-
-				// print response body
-				LOGGER.debug("Login response body:\n" + response.body());
-
-				if (response.statusCode() != 200) {
-					throw new Exception("Got error from server, code: " + response.statusCode());
-				}
+			if (accessToken != null) {
+				oauthLoginFlow.revoke(refreshToken != null ? refreshToken : accessToken);
 			}
 		} finally {
 			loggedInUser = null;
+			accessToken = null;
+			refreshToken = null;
+			accessTokenExpiresAt = null;
+			apiClient = null;
+			jsonApiClient = null;
 		}
 	}
 
@@ -189,5 +167,15 @@ public class Session implements ISession {
 			return loggedInUser.getPrimaryGroupId();
 		}
 		return "1";
+	}
+
+	@Override
+	public ApiClient getApiClient() {
+		return apiClient;
+	}
+
+	@Override
+	public JsonApiClient getJsonApiClient() {
+		return jsonApiClient;
 	}
 }
