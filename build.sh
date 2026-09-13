@@ -15,15 +15,15 @@ rm -rf $BUILDPATH
 mkdir -p $BUILDPATH
 cd $BUILDPATH
 
-echo "Download JRE from AdoptOpenJDK for Windows"
-wget https://github.com/adoptium/temurin11-binaries/releases/download/jdk-11.0.14%2B9/OpenJDK11U-jre_x64_windows_hotspot_11.0.14_9.zip
-unzip OpenJDK11U-jre_x64_windows_hotspot_11.0.14_9.zip
-mv jdk-11.0.14+9-jre jre
+echo "Download JRE from Adoptium for Windows"
+wget https://github.com/adoptium/temurin25-binaries/releases/download/jdk-25.0.1%2B9/OpenJDK25U-jre_x64_windows_hotspot_25.0.1_9.zip
+unzip OpenJDK25U-jre_x64_windows_hotspot_25.0.1_9.zip
+mv jdk-25.0.1+9-jre jre
 
-echo "Download JRE from AdoptOpenJDK for MacOS"
-wget https://github.com/adoptium/temurin11-binaries/releases/download/jdk-11.0.14%2B9/OpenJDK11U-jre_x64_mac_hotspot_11.0.14_9.tar.gz
-tar -xvf OpenJDK11U-jre_x64_mac_hotspot_11.0.14_9.tar.gz
-mv jdk-11.0.14+9-jre jre_macos
+echo "Download JRE from Adoptium for MacOS"
+wget https://github.com/adoptium/temurin25-binaries/releases/download/jdk-25.0.1%2B9/OpenJDK25U-jre_x64_mac_hotspot_25.0.1_9.tar.gz
+tar -xvf OpenJDK25U-jre_x64_mac_hotspot_25.0.1_9.tar.gz
+mv jdk-25.0.1+9-jre jre_macos
 
 git clone https://github.com/Cevi-Uster/hitobitoclient.git
 cd hitobitoclient/cevi-db-client

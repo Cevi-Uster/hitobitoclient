@@ -18,7 +18,7 @@
 		<poi.version>5.2.2</poi.version>
 		<jaxb.version>4.0.0</jaxb.version>
 		<logback.version>1.2.11</logback.version>
-		<spring-boot.version>3.5.8</spring-boot.version>
+		<spring-boot.version>4.1.1</spring-boot.version>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -117,7 +117,7 @@
 		<dependency>
 			<groupId>org.openapitools</groupId>
 			<artifactId>jackson-databind-nullable</artifactId>
-			<version>0.2.4</version>
+			<version>0.2.11</version>
 		</dependency>
 		<dependency>
 			<groupId>jakarta.annotation</groupId>
@@ -132,9 +132,9 @@
 				<artifactId>maven-compiler-plugin</artifactId>
 				<version>3.10.1</version>
 				<configuration>
-					<source>21</source>
-					<target>21</target>
-					<release>21</release>
+					<source>25</source>
+					<target>25</target>
+					<release>25</release>
 				</configuration>
 				<dependencies>
                     <dependency>
@@ -204,7 +204,7 @@
 			<plugin>
 				<groupId>org.openapitools</groupId>
 				<artifactId>openapi-generator-maven-plugin</artifactId>
-				<version>7.17.0</version>
+				<version>7.25.0</version>
 				<executions>
 					<execution>
 						<id>generate-openapi-client</id>
@@ -223,6 +223,8 @@
 								<dateLibrary>java8</dateLibrary>
 								<hideGenerationTimestamp>true</hideGenerationTimestamp>
 								<useJakartaEe>true</useJakartaEe>
+								<useSpringBoot4>true</useSpringBoot4>
+								<useJackson3>true</useJackson3>
 							</configOptions>
 							<generateApiTests>false</generateApiTests>
 							<generateModelTests>false</generateModelTests>

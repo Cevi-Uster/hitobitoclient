@@ -1,8 +1,15 @@
 package ch.cevi.db.client.communication;
 
-import java.util.List;
-
-import javax.ws.rs.core.NewCookie;
+import java.io.IOException;
+import java.net.CookieHandler;
+import java.net.CookieManager;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpClient.Redirect;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
+import java.util.concurrent.Executors;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -10,15 +17,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.sun.jersey.api.client.Client;
-import com.sun.jersey.api.client.ClientResponse;
-import com.sun.jersey.api.client.WebResource;
 
 import ch.cevi.db.client.business.entities.Person;
 import ch.cevi.db.client.configuration.Constants;
 
 /**
  * Represents a session between this client and the hitobito server
- * 
+ *
  * @author developer
  *
  */
@@ -32,30 +37,47 @@ public class Session implements ISession {
 
 	private String baseUrl;
 
-	private List<NewCookie> cookies;
-
 	private boolean usePrimaryGroupAsRoot;
+
+	private final HttpClient httpClient;
+
+	static {
+		CookieHandler.setDefault(new CookieManager());
+	}
 
 	public Session(String baseUrl, boolean usePrimaryGroupAsRoot) {
 		this.baseUrl = baseUrl;
 		this.usePrimaryGroupAsRoot = usePrimaryGroupAsRoot;
+		this.httpClient = HttpClient.newBuilder()
+	            .version(HttpClient.Version.HTTP_2)
+	            .connectTimeout(Duration.ofSeconds(Constants.CONNECTION_TIME_OUT))
+	            .cookieHandler(CookieHandler.getDefault())
+	            .followRedirects(Redirect.ALWAYS)
+	            .executor(Executors.newFixedThreadPool(16))
+	            .build();
 	}
 
 	@Override
 	public synchronized void login(String email, String password) throws Exception {
-		client = Client.create();
-		client.setConnectTimeout(Constants.CONNECTION_TIME_OUT);
 		String url = String.format("%s/users/sign_in.json?person[email]=%s&person[password]=%s", baseUrl, email, password);
 
-		WebResource webResource = client.resource(url);
-		ClientResponse response = webResource.accept("application/json").post(ClientResponse.class);
+		// add json header
+        HttpRequest request = HttpRequest.newBuilder()
+                .POST(HttpRequest.BodyPublishers.ofString(""))
+                .uri(URI.create(url))
+                .setHeader("User-Agent", "Java 11 HttpClient Bot") // add request header
+                .header("Content-Type", "application/json")
+                .build();
 
-		if (response.getStatus() != 200) {
-			throw new Exception("Got error from server, code: " + response.getStatus());
-		}
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
-		String output = response.getEntity(String.class);
-		cookies = response.getCookies();
+        // print status code
+        LOGGER.info("Login response code: " + response.statusCode());
+
+        // print response body
+        LOGGER.debug("Login response body:\n" +response.body());
+
+        String output = response.body();
 		// Try to get authentication token from output
 		JSONObject jsonObject = new JSONObject(output);
 		JSONArray peopleArray = jsonObject.optJSONArray("people");
@@ -71,24 +93,43 @@ public class Session implements ISession {
 		} else {
 			throw new Exception("Unexpected answer from server: " + output);
 		}
+
 	}
 
 	@Override
 	public synchronized String callServerMethod(String url) throws Exception {
 		String result = null;
-		if (client != null && loggedInUser != null) {
-			WebResource webResource = client.resource(url);
-			if (cookies != null) {
-				for (NewCookie cookie : cookies) {
-					webResource.cookie(cookie);
+		if (httpClient != null && loggedInUser != null) {
+			// add json header
+	        HttpRequest request = HttpRequest.newBuilder()
+	                .GET()
+	                .uri(URI.create(url))
+	                .setHeader("User-Agent", "Java 11 HttpClient Bot") // add request header
+	                .header("Content-Type", "application/json")
+	                .build();
+
+
+			long startTime = System.nanoTime();
+			int retryCount = 0;
+			while (retryCount < 3) {
+				try {
+					HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+					if (response.statusCode() != 200) {
+						retryCount++;
+						if (retryCount == 3) {
+							throw new Exception("Got error from server, code: " + response.statusCode());
+						}
+					} else {
+						result = response.body();
+						break;
+					}
+				} catch (IOException e) {
+					retryCount++;
+					if (retryCount == 3) {
+						throw new Exception("Got error from server: " + e.getMessage());
+					}
 				}
 			}
-			long startTime = System.nanoTime();
-			ClientResponse response = webResource.accept("application/json").get(ClientResponse.class);
-			if (response.getStatus() != 200) {
-				throw new Exception("Got error from server, code: " + response.getStatus());
-			}
-			result = response.getEntity(String.class);
 			long endTime = System.nanoTime();
 			long duration = (endTime - startTime) / 1000000;
 			LOGGER.info("Server call duration: " + duration + " ms");
@@ -98,31 +139,32 @@ public class Session implements ISession {
 		return result;
 	}
 
+
 	@Override
 	public synchronized void logout() throws Exception {
 		try {
 			if (client != null && loggedInUser != null) {
-				String url = String.format("%s/users/token.json?person[email]=%s&person[password]=%s", baseUrl, loggedInUser.getEmail(), loggedInUser.getPassword());
-				WebResource webResource = client.resource(url);
-				if (cookies != null) {
-					for (NewCookie cookie : cookies) {
-						webResource.cookie(cookie);
-					}
-				}
-				ClientResponse response = webResource.accept("application/json").delete(ClientResponse.class);
+				String url = String.format("%s/users/token.json?person[email]=%s&person[password]=%s", baseUrl,
+						loggedInUser.getEmail(), loggedInUser.getPassword());
+				// add json header
+				HttpRequest request = HttpRequest.newBuilder().DELETE()
+						.uri(URI.create(url)).setHeader("User-Agent", "Java 11 HttpClient Bot") // add request header
+						.header("Content-Type", "application/json").build();
 
-				if (response.getStatus() != 200) {
-					throw new Exception("Got error from server, code: " + response.getStatus());
-				}
+				HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
+				// print status code
+				LOGGER.info("Login response code: " + response.statusCode());
+
+				// print response body
+				LOGGER.debug("Login response body:\n" + response.body());
+
+				if (response.statusCode() != 200) {
+					throw new Exception("Got error from server, code: " + response.statusCode());
+				}
 			}
 		} finally {
 			loggedInUser = null;
-			cookies = null;
-			if (client != null) {
-				client.destroy();
-				client = null;
-			}
 		}
 	}
 
