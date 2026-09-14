@@ -82,9 +82,9 @@
 			<version>2.13.0</version>
 		</dependency>
 		<dependency>
-			<groupId>com.jidesoft</groupId>
+			<groupId>com.formdev</groupId>
 			<artifactId>jide-oss</artifactId>
-			<version>3.6.18</version>
+			<version>3.7.15</version>
 		</dependency>
 		<dependency>
 			<groupId>com.opencsv</groupId>
