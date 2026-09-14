@@ -9,7 +9,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Supplier;
+import java.util.function.Consumer;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -38,8 +38,8 @@ import ch.cevi.db.client.api.invoker.ApiClient;
  * data layer).
  * <p>
  * Requests are made via {@link ApiClient#invokeAPI} so they reuse its base
- * path, default headers (in particular the {@code Authorization: Bearer}
- * header set at login) and retry configuration; the response is requested as
+ * path, default headers/cookies (in particular the {@code _session_id}
+ * cookie set at login) and retry configuration; the response is requested as
  * a plain {@code String} (read by Spring's built-in {@code
  * StringHttpMessageConverter}, which accepts any content type) and parsed
  * with {@code org.json}, avoiding any dependency on Jackson's handling of the
@@ -57,23 +57,23 @@ public class JsonApiClient {
 
 	private final HttpClient httpClient;
 
-	private final Supplier<String> accessTokenSupplier;
+	private final Consumer<HttpRequest.Builder> authDecorator;
 
 	/**
-	 * @param apiClient           generated client, already configured with base
-	 *                            path and {@code Authorization} default header
-	 * @param httpClient          used only to follow {@code links.next} URLs,
-	 *                            which are already-complete absolute URLs that
-	 *                            {@link ApiClient}'s base-path composition
-	 *                            cannot be pointed at directly
-	 * @param accessTokenSupplier returns the current (possibly refreshed) bearer
-	 *                            token, for the requests made via {@code
-	 *                            httpClient}
+	 * @param apiClient     generated client, already configured with base path
+	 *                      and auth (cookie or header) default(s)
+	 * @param httpClient    used only to follow {@code links.next} URLs, which
+	 *                      are already-complete absolute URLs that {@link
+	 *                      ApiClient}'s base-path composition cannot be
+	 *                      pointed at directly
+	 * @param authDecorator applies whatever auth {@code ApiClient} was given
+	 *                      (currently the {@code _session_id} cookie) to a
+	 *                      request built directly against {@code httpClient}
 	 */
-	public JsonApiClient(ApiClient apiClient, HttpClient httpClient, Supplier<String> accessTokenSupplier) {
+	public JsonApiClient(ApiClient apiClient, HttpClient httpClient, Consumer<HttpRequest.Builder> authDecorator) {
 		this.apiClient = apiClient;
 		this.httpClient = httpClient;
-		this.accessTokenSupplier = accessTokenSupplier;
+		this.authDecorator = authDecorator;
 	}
 
 	/**
@@ -161,13 +161,12 @@ public class JsonApiClient {
 
 	private JSONObject getAbsoluteUrl(String url) throws Exception {
 		try {
-			HttpRequest request = HttpRequest.newBuilder()
+			HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
 					.uri(URI.create(url))
 					.header("Accept", "application/vnd.api+json")
-					.header("Authorization", "Bearer " + accessTokenSupplier.get())
-					.GET()
-					.build();
-			HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+					.GET();
+			authDecorator.accept(requestBuilder);
+			HttpResponse<String> response = httpClient.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofString());
 			if (response.statusCode() != 200) {
 				throw new Exception("JSON:API request to " + url + " failed with status " + response.statusCode());
 			}

@@ -11,6 +11,8 @@ import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JPasswordField;
+import javax.swing.JTextField;
 
 import com.jgoodies.binding.adapter.BasicComponentFactory;
 import com.jgoodies.binding.adapter.ComboBoxAdapter;
@@ -37,6 +39,12 @@ public class ConnectDialog extends AbstractDialog {
 
 	private JComboBox<BaseUrl> baseUrlComboBox;
 
+	private JTextField usernameTextField;
+
+	private JPasswordField passwordField;
+
+	private JTextField secondFactorField;
+
 	private JCheckBox usePrimaryGroupAsRootCheckBox;
 
 	private JButton okButton;
@@ -60,8 +68,10 @@ public class ConnectDialog extends AbstractDialog {
 	@SuppressWarnings("unchecked")
 	private void initGui() {
 		CellConstraints cc = new CellConstraints();
-		this.setLayout(new FormLayout("5px, left:pref:none, 5px, fill:280px:grow, 5px",
-				"5px, top:pref:none, 5px, top:pref:none, 5px, top:pref:none, 5px, top:pref:none, 5px"));
+		this.setLayout(new FormLayout(
+			"5px, left:pref:none, 5px, fill:280px:grow, 5px",
+			"5px, top:pref:none, 5px, top:pref:none, 5px, top:pref:none, 5px, top:pref:none, 5px, top:pref:none, 5px, top:pref:none, 5px"
+		));
 		int row = 2;
 
 		if (errorMessage != null) {
@@ -79,7 +89,22 @@ public class ConnectDialog extends AbstractDialog {
 		this.add(baseUrlComboBox, cc.xy(4, row));
 		row += 2;
 
-		this.add(new JLabel(Texts.getTranslatedText(Texts.CONNECT_DIALOG_OAUTH_INFO_LABEL)), cc.xyw(2, row, 3));
+		ValueModel usernameValueModel = new PropertyAdapter<Configuration>(configuration, Configuration.USERNAME_PROPERTY, true);
+		usernameTextField = BasicComponentFactory.createTextField(usernameValueModel);
+		this.add(new JLabel(Texts.getTranslatedText(Texts.CONNECT_DIALOG_USERNAME_LABEL)), cc.xy(2, row));
+		this.add(usernameTextField, cc.xy(4, row));
+		row += 2;
+
+		ValueModel passwordValueModel = new PropertyAdapter<Configuration>(configuration, Configuration.PASSWORD_PROPERTY, true);
+		passwordField = BasicComponentFactory.createPasswordField(passwordValueModel);
+		this.add(new JLabel(Texts.getTranslatedText(Texts.CONNECT_DIALOG_PASSWORD_LABEL)), cc.xy(2, row));
+		this.add(passwordField, cc.xy(4, row));
+		row += 2;
+
+		this.add(new JLabel(Texts.getTranslatedText(Texts.CONNECT_DIALOG_SECOND_FACTOR_LABEL)), cc.xy(2, row));
+		ValueModel secondFactorValueModel = new PropertyAdapter<Configuration>(configuration, Configuration.SECOND_FACTOR_CODE_PROPERTY, true);
+		secondFactorField = BasicComponentFactory.createTextField(secondFactorValueModel);
+		this.add(secondFactorField, cc.xy(4, row));
 		row += 2;
 
 		ValueModel usePrimaryGroupAsRootValueModel = new PropertyAdapter<Configuration>(configuration, Configuration.USE_PRIMARY_GROUP_AS_ROOT_PROPERY, true);

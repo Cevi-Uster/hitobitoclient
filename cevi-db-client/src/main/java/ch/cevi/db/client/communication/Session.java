@@ -1,25 +1,48 @@
 package ch.cevi.db.client.communication;
 
+import java.net.CookieManager;
+import java.net.CookiePolicy;
+import java.net.HttpCookie;
+import java.net.URI;
+import java.net.URLEncoder;
 import java.net.http.HttpClient;
+import java.net.http.HttpClient.Redirect;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.time.Instant;
+import java.util.Optional;
 import java.util.concurrent.Executors;
-import java.util.function.Supplier;
 
+import org.json.JSONArray;
 import org.json.JSONObject;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 
 import ch.cevi.db.client.api.invoker.ApiClient;
 import ch.cevi.db.client.business.entities.Person;
 import ch.cevi.db.client.configuration.Constants;
 
 /**
- * Represents a session between this client and the Hitobito server, backed
- * by an OAuth2 access/refresh token pair (see {@link OAuthLoginFlow}) rather
- * than a browser session cookie. Tokens are kept in memory only, matching the
- * app's existing behavior of not persisting credentials to disk; logging in
- * again after a restart repeats the browser login.
+ * Represents a session between this client and the Hitobito server.
+ * <p>
+ * Login uses the same Devise session Hitobito's own {@code /users/sign_in}
+ * page uses (GET it for a CSRF token, POST credentials, handle a second
+ * factor if requested), rather than OAuth2: OAuth requires a root-group
+ * admin to register an application (client_id/client_secret) on the
+ * instance, which most users of this app -- including its maintainer -- do
+ * not have the rights to do. The resulting {@code _session_id} cookie is
+ * then carried into the generated {@link ApiClient} via {@code
+ * addDefaultCookie}, so the same session that logged into the website is
+ * used for all JSON:API calls (the spec declares this as a valid auth
+ * scheme: {@code SessionAuth}, an apiKey in the {@code _session_id} cookie).
+ * Nothing is persisted to disk; logging in again after a restart repeats
+ * this flow.
  *
  * @author developer
  */
@@ -27,13 +50,15 @@ public class Session implements ISession {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(Session.class.getName());
 
+	private static final String SESSION_COOKIE_NAME = "_session_id";
+
 	private final String baseUrl;
 
 	private final boolean usePrimaryGroupAsRoot;
 
-	private final HttpClient httpClient;
+	private final CookieManager cookieManager;
 
-	private final OAuthLoginFlow oauthLoginFlow;
+	private final HttpClient httpClient;
 
 	private Person loggedInUser;
 
@@ -41,102 +66,141 @@ public class Session implements ISession {
 
 	private JsonApiClient jsonApiClient;
 
-	private volatile String accessToken;
-
-	private volatile String refreshToken;
-
-	private volatile Instant accessTokenExpiresAt;
-
-	public Session(String baseUrl, String oauthClientId, String oauthClientSecret, boolean usePrimaryGroupAsRoot) {
+	public Session(String baseUrl, boolean usePrimaryGroupAsRoot) {
 		this.baseUrl = baseUrl;
 		this.usePrimaryGroupAsRoot = usePrimaryGroupAsRoot;
+		this.cookieManager = new CookieManager(null, CookiePolicy.ACCEPT_ALL);
 		this.httpClient = HttpClient.newBuilder()
 				.version(HttpClient.Version.HTTP_2)
 				.connectTimeout(Duration.ofMillis(Constants.CONNECTION_TIME_OUT))
+				.cookieHandler(cookieManager)
+				.followRedirects(Redirect.NORMAL)
 				.executor(Executors.newFixedThreadPool(16))
 				.build();
-		this.oauthLoginFlow = new OAuthLoginFlow(baseUrl, oauthClientId, oauthClientSecret, httpClient);
 	}
 
-	/**
-	 * Opens the system browser to Hitobito's login/consent page, then blocks
-	 * on {@code authorizationCodePrompt} for the code the user reads off
-	 * that page and pastes back (Hitobito's OAuth redirect_uri here is the
-	 * {@code urn:ietf:wg:oauth:2.0:oob} constant, so there is no automatic
-	 * redirect to catch -- see {@link OAuthLoginFlow}). {@code
-	 * authorizationCodePrompt} is expected to show a UI prompt and is called
-	 * from whatever thread this method runs on (a background {@code
-	 * SwingWorker} thread in {@link ch.cevi.db.client.gui.MainController}),
-	 * so it must hop to the EDT itself if it needs to.
-	 */
 	@Override
-	public synchronized void login(Supplier<String> authorizationCodePrompt) throws Exception {
-		oauthLoginFlow.openBrowserForLogin();
-		String code = authorizationCodePrompt.get();
-		if (code == null || code.isBlank()) {
-			throw new Exception("Login cancelled: no authorization code entered.");
+	public synchronized void login(String email, String password, String secondFactorCode) throws Exception {
+		String signInUrl = baseUrl + "/users/sign_in";
+		String authenticityToken = fetchAuthenticityToken(signInUrl);
+
+		String loginBody = "person[login_identity]=" + urlEncode(email)
+				+ "&person[password]=" + urlEncode(password)
+				+ "&person[remember_me]=0"
+				+ "&authenticity_token=" + urlEncode(authenticityToken);
+		HttpResponse<String> loginResponse = postForm(signInUrl, loginBody);
+		LOGGER.info("Login response code: " + loginResponse.statusCode());
+
+		if (loginResponse.body().contains("second_factor")) {
+			if (secondFactorCode == null || secondFactorCode.isEmpty()) {
+				throw new Exception("Second factor code required but not provided.");
+			}
+			String secondFactorToken = extractAuthenticityToken(loginResponse.body()).orElse(authenticityToken);
+			String secondFactorBody = "second_factor_code=" + urlEncode(secondFactorCode)
+					+ "&commit=Absenden"
+					+ "&authenticity_token=" + urlEncode(secondFactorToken);
+			HttpResponse<String> secondFactorResponse = postForm(baseUrl + "/users/second_factor?second_factor=totp", secondFactorBody);
+			LOGGER.info("Second factor response code: " + secondFactorResponse.statusCode());
+			if (secondFactorResponse.statusCode() != 200) {
+				throw new Exception("Second factor authentication failed: " + secondFactorResponse.body());
+			}
+		} else if (loginResponse.statusCode() != 200) {
+			throw new Exception("Login failed: " + loginResponse.body());
 		}
-		applyTokens(oauthLoginFlow.exchangeCode(code.trim()));
+
+		String sessionCookie = findSessionCookie()
+				.orElseThrow(() -> new Exception("Login did not yield a session cookie; check credentials."));
+
 		apiClient = new ApiClient();
 		apiClient.setBasePath(baseUrl + "/api");
-		apiClient.addDefaultHeader("Authorization", "Bearer " + accessToken);
-		jsonApiClient = new JsonApiClient(apiClient, httpClient, () -> accessToken);
-		loggedInUser = resolveLoggedInUser();
+		apiClient.addDefaultCookie(SESSION_COOKIE_NAME, sessionCookie);
+		jsonApiClient = new JsonApiClient(apiClient, httpClient,
+				requestBuilder -> requestBuilder.header("Cookie", SESSION_COOKIE_NAME + "=" + sessionCookie));
+
+		loggedInUser = resolveLoggedInUser(email);
 	}
 
-	private void applyTokens(OAuthLoginFlow.TokenResponse tokens) {
-		this.accessToken = tokens.accessToken();
-		if (tokens.refreshToken() != null) {
-			this.refreshToken = tokens.refreshToken();
-		}
-		this.accessTokenExpiresAt = tokens.expiresAt();
+	private Optional<String> findSessionCookie() {
+		return cookieManager.getCookieStore().getCookies().stream()
+				.filter(cookie -> SESSION_COOKIE_NAME.equals(cookie.getName()))
+				.map(HttpCookie::getValue)
+				.findFirst();
+	}
+
+	private String fetchAuthenticityToken(String url) throws Exception {
+		HttpRequest request = HttpRequest.newBuilder()
+				.uri(URI.create(url))
+				.header("User-Agent", "Java HttpClient")
+				.GET()
+				.build();
+		HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+		return extractAuthenticityToken(response.body())
+				.orElseThrow(() -> new Exception("Could not find authenticity_token on " + url));
+	}
+
+	private static Optional<String> extractAuthenticityToken(String html) {
+		Document document = Jsoup.parse(html);
+		Element tokenInput = document.selectFirst("input[name=authenticity_token]");
+		return tokenInput != null ? Optional.of(tokenInput.attr("value")) : Optional.empty();
+	}
+
+	private HttpResponse<String> postForm(String url, String body) throws Exception {
+		HttpRequest request = HttpRequest.newBuilder()
+				.uri(URI.create(url))
+				.header("User-Agent", "Java HttpClient")
+				.header("Content-Type", "application/x-www-form-urlencoded")
+				.POST(HttpRequest.BodyPublishers.ofString(body))
+				.build();
+		return httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+	}
+
+	private static String urlEncode(String value) {
+		return URLEncoder.encode(value, StandardCharsets.UTF_8);
 	}
 
 	/**
-	 * Refreshes the access token if it has expired or is about to. Business
-	 * operations that may run long after login should call this first; {@link
-	 * #getApiClient()}'s {@code Authorization} header is updated in place.
+	 * Resolves the logged-in person by the email used to log in. Session
+	 * (cookie) auth has no equivalent of an OAuth "resource_owner_id" to
+	 * read an id from directly, but the spec supports filtering people by
+	 * email.
 	 */
-	public synchronized void ensureFreshAccessToken() throws Exception {
-		if (refreshToken == null || accessTokenExpiresAt == null) {
-			return;
+	private Person resolveLoggedInUser(String email) throws Exception {
+		MultiValueMap<String, String> query = new LinkedMultiValueMap<>();
+		query.add("filter[email][eq]", email);
+		JSONObject document = jsonApiClient.get("/people", query);
+		JSONArray dataArray = document.optJSONArray("data");
+		JSONObject resource = (dataArray != null && dataArray.length() > 0) ? dataArray.optJSONObject(0) : null;
+		if (resource == null) {
+			throw new Exception("Could not find a person with email " + email + " after login.");
 		}
-		if (Instant.now().isBefore(accessTokenExpiresAt.minusSeconds(30))) {
-			return;
-		}
-		LOGGER.info("Access token expired or expiring soon, refreshing");
-		applyTokens(oauthLoginFlow.refresh(refreshToken));
-		apiClient.addDefaultHeader("Authorization", "Bearer " + accessToken);
-	}
-
-	/**
-	 * Resolves who just logged in via {@code /oauth/profile} (which, with
-	 * the {@code with_roles} scope, reports the full profile including
-	 * {@code id}) -- see {@link OAuthLoginFlow#fetchProfile}.
-	 */
-	private Person resolveLoggedInUser() throws Exception {
-		JSONObject profile = oauthLoginFlow.fetchProfile(accessToken, "with_roles");
 		Person person = new Person();
-		person.initFromOAuthProfile(profile);
-		if (person.getId() == null) {
-			throw new Exception("Could not determine the logged-in person from the OAuth profile.");
-		}
+		person.initFromJSONObject(resource);
 		return person;
 	}
 
 	@Override
 	public synchronized void logout() throws Exception {
 		try {
-			if (accessToken != null) {
-				oauthLoginFlow.revoke(refreshToken != null ? refreshToken : accessToken);
+			Optional<String> sessionCookie = findSessionCookie();
+			if (sessionCookie.isPresent()) {
+				try {
+					String authenticityToken = fetchAuthenticityToken(baseUrl + "/");
+					HttpRequest request = HttpRequest.newBuilder()
+							.uri(URI.create(baseUrl + "/users/sign_out"))
+							.header("User-Agent", "Java HttpClient")
+							.header("X-CSRF-Token", authenticityToken)
+							.DELETE()
+							.build();
+					httpClient.send(request, HttpResponse.BodyHandlers.discarding());
+				} catch (Exception e) {
+					LOGGER.warn("Could not sign out cleanly, discarding the local session anyway: " + e.getMessage());
+				}
 			}
 		} finally {
 			loggedInUser = null;
-			accessToken = null;
-			refreshToken = null;
-			accessTokenExpiresAt = null;
 			apiClient = null;
 			jsonApiClient = null;
+			cookieManager.getCookieStore().removeAll();
 		}
 	}
 

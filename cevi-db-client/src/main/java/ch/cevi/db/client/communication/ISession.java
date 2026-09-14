@@ -1,19 +1,18 @@
 package ch.cevi.db.client.communication;
 
-import java.util.function.Supplier;
-
 import ch.cevi.db.client.api.invoker.ApiClient;
 import ch.cevi.db.client.business.entities.Person;
 
 public interface ISession {
 
 	/**
-	 * Logs in via OAuth2: opens the user's system browser to Hitobito's own
-	 * login page (which handles credentials and any second factor), then
-	 * blocks on {@code authorizationCodePrompt} for the authorization code
-	 * the user reads off that page and pastes back.
+	 * Logs in via the classic Devise session (the same login Hitobito's own
+	 * {@code /users/sign_in} page uses), and carries the resulting {@code
+	 * _session_id} cookie into the JSON:API client. No OAuth application
+	 * registration is required -- see {@link Session} for why this is the
+	 * mechanism used instead of OAuth2.
 	 */
-	void login(Supplier<String> authorizationCodePrompt) throws Exception;
+	void login(String email, String password, String secondFactorCode) throws Exception;
 
 	void logout() throws Exception;
 

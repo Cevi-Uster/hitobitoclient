@@ -53,7 +53,7 @@ public class ServerFacadeTest {
 		String baseUrl = "http://127.0.0.1:" + stubServer.getAddress().getPort();
 		ApiClient apiClient = new ApiClient();
 		apiClient.setBasePath(baseUrl + "/api");
-		JsonApiClient jsonApiClient = new JsonApiClient(apiClient, HttpClient.newHttpClient(), () -> "stub-access-token");
+		JsonApiClient jsonApiClient = new JsonApiClient(apiClient, HttpClient.newHttpClient(), requestBuilder -> { });
 		serverFacade = new ServerFacade(new StubSession(baseUrl, jsonApiClient));
 	}
 
@@ -144,7 +144,7 @@ public class ServerFacadeTest {
 		}
 
 		@Override
-		public void login(java.util.function.Supplier<String> authorizationCodePrompt) {
+		public void login(String email, String password, String secondFactorCode) {
 		}
 
 		@Override
