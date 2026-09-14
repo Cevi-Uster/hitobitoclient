@@ -144,7 +144,7 @@ public class ServerFacadeTest {
 		}
 
 		@Override
-		public void login() {
+		public void login(java.util.function.Supplier<String> authorizationCodePrompt) {
 		}
 
 		@Override

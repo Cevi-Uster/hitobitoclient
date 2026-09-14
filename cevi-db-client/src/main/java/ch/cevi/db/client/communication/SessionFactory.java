@@ -6,7 +6,7 @@ public class SessionFactory {
 
 	public static ISession createSession(Configuration configuration) {
 		return new Session(configuration.getBaseUrl().toString(), configuration.getBaseUrl().getOauthClientId(),
-				configuration.getUsePrimaryGroupAsRoot());
+				configuration.getBaseUrl().getOauthClientSecret(), configuration.getUsePrimaryGroupAsRoot());
 	}
 
 }

@@ -1,5 +1,7 @@
 package ch.cevi.db.client.gui;
 
+import javax.swing.JOptionPane;
+import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
 
 import org.slf4j.Logger;
@@ -38,7 +40,7 @@ public class MainController {
 			@Override
 			protected Object doInBackground() throws Exception {
 				try {
-					session.login();
+					session.login(MainController.this::promptForAuthorizationCode);
 					loginSuccessfull = true;
 				} catch (Exception e) {
 					LOGGER.error("Login failed: " + e.getMessage());
@@ -88,6 +90,25 @@ public class MainController {
 
 		};
 		loadFirstGroupWorker.execute();
+	}
+
+	/**
+	 * Called on the login {@link SwingWorker}'s background thread (from
+	 * {@link ISession#login}) after the browser has been opened to
+	 * Hitobito's consent page; shows a modal prompt on the EDT for the
+	 * authorization code the user reads off that page, and blocks until
+	 * it's entered (or the dialog is cancelled, returning {@code null}).
+	 */
+	private String promptForAuthorizationCode() {
+		final String[] result = new String[1];
+		try {
+			SwingUtilities.invokeAndWait(() -> result[0] = JOptionPane.showInputDialog(mainWindow,
+					Texts.getTranslatedText(Texts.CONNECT_DIALOG_OAUTH_CODE_PROMPT),
+					Texts.getTranslatedText(Texts.CONNECT_DIALOG_TITLE), JOptionPane.QUESTION_MESSAGE));
+		} catch (Exception e) {
+			LOGGER.error("Failed to prompt for authorization code: " + e.getMessage());
+		}
+		return result[0];
 	}
 
 	private void loginFailed() {

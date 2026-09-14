@@ -4,20 +4,28 @@ public class Constants {
 	public static final int CONNECTION_TIME_OUT = 5000;
 
 	/**
-	 * Fixed loopback port the OAuth2 login flow listens on for the authorization
-	 * redirect. Must match the redirect URI registered for the OAuth application
-	 * on the Hitobito instance (Doorkeeper matches redirect URIs exactly).
+	 * Hitobito's OAuth redirect_uri must be {@code https://} except on
+	 * Hitobito's own "integration" deployments, where {@code
+	 * http://localhost} is additionally allowed -- neither of which a
+	 * distributed desktop app can offer. {@code urn:ietf:wg:oauth:2.0:oob}
+	 * is Doorkeeper's documented fallback for exactly this case: the
+	 * authorization code is displayed on the Hitobito page instead of being
+	 * redirected anywhere, and the user pastes it back into the app.
+	 *
+	 * @see <a href=
+	 *      "https://github.com/hitobito/hitobito/blob/master/doc/developer/people/oauth.md">Hitobito
+	 *      OAuth documentation</a>
 	 */
-	public static final int OAUTH_CALLBACK_PORT = 17493;
-
-	public static final String OAUTH_REDIRECT_URI = "http://127.0.0.1:" + OAUTH_CALLBACK_PORT + "/callback";
+	public static final String OAUTH_REDIRECT_URI = "urn:ietf:wg:oauth:2.0:oob";
 
 	/**
-	 * How long to wait for the user to complete the login in their browser
-	 * before giving up.
+	 * {@code api} covers every JSON:API endpoint; {@code with_roles} is
+	 * needed so {@code /oauth/profile} returns the logged-in person's id
+	 * (see {@link ch.cevi.db.client.communication.OAuthLoginFlow#fetchProfile}).
+	 * The OAuth application registered on the Hitobito instance must permit
+	 * both scopes.
 	 */
-	public static final int OAUTH_LOGIN_TIMEOUT_SECONDS = 300;
-
+	public static final String OAUTH_SCOPE = "api with_roles";
 
 	// @formatter:off
 	public final static String ABOUT_DIALOG_LICENSE = "The MIT License (MIT)\n" + "Copyright (c) 2016 Marc Baumgartner\n\n"

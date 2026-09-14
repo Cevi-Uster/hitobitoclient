@@ -18,7 +18,7 @@ public class SessionTest {
 
 	@Test
 	public void isNotLoggedInBeforeLogin() {
-		Session session = new Session("https://db.cevi.ch", "unused-test-client-id", false);
+		Session session = new Session("https://db.cevi.ch", "unused-test-client-id", "unused-test-client-secret", false);
 		assertFalse(session.isLoggedIn());
 		assertNull(session.getLoggedInUser());
 		assertNull(session.getApiClient());

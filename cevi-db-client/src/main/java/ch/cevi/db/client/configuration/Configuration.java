@@ -6,16 +6,23 @@ import java.beans.PropertyChangeSupport;
 public class Configuration {
 
 	public enum BaseUrl {
-		Live("https://db.cevi.ch", System.getProperty("cevidb.oauth.clientId.live", "REPLACE_WITH_LIVE_OAUTH_CLIENT_ID")),
-		Test("http://cevi.puzzle.ch", System.getProperty("cevidb.oauth.clientId.test", "REPLACE_WITH_TEST_OAUTH_CLIENT_ID"));
+		Live("https://db.cevi.ch",
+				System.getProperty("cevidb.oauth.clientId.live", "REPLACE_WITH_LIVE_OAUTH_CLIENT_ID"),
+				System.getProperty("cevidb.oauth.clientSecret.live", "REPLACE_WITH_LIVE_OAUTH_CLIENT_SECRET")),
+		Test("http://cevi.puzzle.ch",
+				System.getProperty("cevidb.oauth.clientId.test", "REPLACE_WITH_TEST_OAUTH_CLIENT_ID"),
+				System.getProperty("cevidb.oauth.clientSecret.test", "REPLACE_WITH_TEST_OAUTH_CLIENT_SECRET"));
 
 		private final String url;
 
 		private final String oauthClientId;
 
-		private BaseUrl(String url, String oauthClientId) {
+		private final String oauthClientSecret;
+
+		private BaseUrl(String url, String oauthClientId, String oauthClientSecret) {
 			this.url = url;
 			this.oauthClientId = oauthClientId;
+			this.oauthClientSecret = oauthClientSecret;
 		}
 
 		public boolean equalsUrl(String otherUrl) {
@@ -24,13 +31,25 @@ public class Configuration {
 
 		/**
 		 * The client_id of the OAuth application registered for this Hitobito
-		 * instance. Register one application per environment in the instance's
-		 * admin UI (redirect URI: {@link Constants#OAUTH_REDIRECT_URI}), then set
-		 * it via the {@code cevidb.oauth.clientId.live}/{@code .test} system
-		 * properties (the defaults here are placeholders).
+		 * instance (Hitobito root-group admin > global settings > OAuth
+		 * applications; redirect URI {@link Constants#OAUTH_REDIRECT_URI},
+		 * scopes {@link Constants#OAUTH_SCOPE}). Set via the {@code
+		 * cevidb.oauth.clientId.live}/{@code .test} system properties -- the
+		 * defaults here are placeholders.
 		 */
 		public String getOauthClientId() {
 			return oauthClientId;
+		}
+
+		/**
+		 * The client_secret Hitobito generated alongside the client_id.
+		 * Doorkeeper is configured as a confidential client here (PKCE/public
+		 * clients aren't offered), so this is required on every token
+		 * request. Set via the {@code cevidb.oauth.clientSecret.live}/{@code
+		 * .test} system properties.
+		 */
+		public String getOauthClientSecret() {
+			return oauthClientSecret;
 		}
 
 		public String toString() {

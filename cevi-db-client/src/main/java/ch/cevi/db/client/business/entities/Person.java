@@ -426,6 +426,34 @@ public class Person {
 	}
 
 	/**
+	 * Populates this person from a Hitobito OAuth {@code /oauth/profile}
+	 * response ({@code {"id": ..., "email": ..., "first_name": ..., ...}} --
+	 * flat, unlike the JSON:API's {@code {id, type, attributes}} resource
+	 * shape), as fetched right after login to resolve who just logged in
+	 * (see {@link ch.cevi.db.client.communication.Session}).
+	 */
+	public void initFromOAuthProfile(JSONObject profile) {
+		if (profile == null) {
+			return;
+		}
+		id = profile.has("id") && !profile.isNull("id") ? String.valueOf(profile.get("id")) : null;
+		email = profile.optString("email", null);
+		firstName = profile.optString("first_name", null);
+		lastName = profile.optString("last_name", null);
+		nickname = profile.optString("nickname", null);
+		companyName = profile.optString("company_name", null);
+		isCompany = profile.optBoolean("company", false);
+		address = profile.optString("address", null);
+		zipCode = profile.optString("zip_code", null);
+		town = profile.optString("town", null);
+		country = profile.optString("country", null);
+		gender = profile.optString("gender", null);
+		primaryGroupId = profile.has("primary_group_id") && !profile.isNull("primary_group_id")
+				? String.valueOf(profile.get("primary_group_id"))
+				: null;
+	}
+
+	/**
 	 * Populates this person from a JSON:API "people" resource object
 	 * ({@code {"id": ..., "type": "people", "attributes": {...}}}), as
 	 * returned under {@code data} or {@code included} by the new Hitobito
