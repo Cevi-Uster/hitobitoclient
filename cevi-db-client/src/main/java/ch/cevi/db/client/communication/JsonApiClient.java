@@ -62,10 +62,10 @@ public class JsonApiClient {
 	/**
 	 * @param apiClient     generated client, already configured with base path
 	 *                      and auth (cookie or header) default(s)
-	 * @param httpClient    used only to follow {@code links.next} URLs, which
-	 *                      are already-complete absolute URLs that {@link
-	 *                      ApiClient}'s base-path composition cannot be
-	 *                      pointed at directly
+	 * @param httpClient    used only to follow {@code links.next} URLs (resolved
+	 *                      against {@code apiClient}'s base path if relative),
+	 *                      which {@link ApiClient}'s base-path composition
+	 *                      cannot be pointed at directly
 	 * @param authDecorator applies whatever auth {@code ApiClient} was given
 	 *                      (currently the {@code _session_id} cookie) to a
 	 *                      request built directly against {@code httpClient}
@@ -161,8 +161,12 @@ public class JsonApiClient {
 
 	private JSONObject getAbsoluteUrl(String url) throws Exception {
 		try {
+			URI uri = URI.create(url);
+			if (!uri.isAbsolute()) {
+				uri = URI.create(apiClient.getBasePath()).resolve(uri);
+			}
 			HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
-					.uri(URI.create(url))
+					.uri(uri)
 					.header("Accept", "application/vnd.api+json")
 					.GET();
 			authDecorator.accept(requestBuilder);
